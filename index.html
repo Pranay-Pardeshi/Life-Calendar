@@ -9,6 +9,12 @@
     <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     
+    <!-- Firebase SDKs -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-storage-compat.js"></script>
+
     <style>
         :root {
             /* TAKI THEME */
@@ -24,6 +30,7 @@
             --sky-bg: url('https://images.unsplash.com/photo-1506744038136-46273834b3fb?q=80&w=2070&auto=format&fit=crop');
             --paper-bg: #fff;
             --input-bg: #fff;
+            --anime-wallpaper: url('https://images8.alphacoders.com/740/740448.png');
         }
 
         [data-theme="mitsuha"] {
@@ -51,23 +58,90 @@
         body {
             font-family: "Roboto", "Helvetica Neue", Helvetica, Arial, sans-serif;
             background-color: var(--bg-body);
-            height: 100dvh; /* Dynamic viewport height fix for mobile */
+            background-image: var(--anime-wallpaper);
+            background-size: cover;
+            background-position: center;
+            background-attachment: fixed;
+            height: 100dvh;
             display: flex;
             justify-content: center;
+            align-items: center;
             overflow: hidden;
             transition: background-color 0.3s;
-            /* 4K Upscale / Smooth Fonts */
             -webkit-font-smoothing: antialiased;
             -moz-osx-font-smoothing: grayscale;
             text-rendering: optimizeLegibility;
         }
 
+        body::before {
+            content: '';
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: inherit;
+            filter: blur(15px) brightness(0.7);
+            z-index: -1;
+            transform: scale(1.1);
+        }
+
         #app-container {
             width: 100%; max-width: 450px; background-color: var(--bg-app);
-            height: 100%; position: relative; display: flex; flex-direction: column;
-            box-shadow: 0 0 40px rgba(0,0,0,0.15); /* Softer, deeper shadow */
-            transition: background-color 0.3s;
+            height: 100dvh; position: relative; display: flex; flex-direction: column;
+            box-shadow: 0 0 100px rgba(0,0,0,0.5);
+            transition: background-color 0.3s, max-width 0.3s, height 0.3s, border-radius 0.3s;
+            z-index: 10;
         }
+
+        @media (min-width: 450px) and (min-height: 600px) {
+            #app-container {
+                height: 90dvh;
+                max-height: 850px;
+                border-radius: 40px;
+                border: 10px solid #333;
+                margin: 20px;
+            }
+        }
+
+        /* --- AUTH SYSTEM STYLES --- */
+        .auth-overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.7); z-index: 10000; display: flex;
+            align-items: center; justify-content: center; backdrop-filter: blur(10px);
+        }
+        .auth-card {
+            width: 90%; max-width: 380px; background: rgba(255, 255, 255, 0.9);
+            padding: 40px 30px; border-radius: 25px; box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            text-align: center; animation: authFadeIn 0.5s ease;
+        }
+        [data-dark="true"] .auth-card { background: rgba(30, 30, 30, 0.9); }
+        @keyframes authFadeIn { from { opacity: 0; transform: scale(0.9); } to { opacity: 1; transform: scale(1); } }
+        
+        .auth-logo { font-size: 2.5rem; color: var(--theme-color); margin-bottom: 10px; }
+        .auth-title { font-size: 1.5rem; font-weight: 700; color: var(--text-main); margin-bottom: 30px; }
+        
+        .auth-input-group { margin-bottom: 20px; text-align: left; }
+        .auth-label { font-size: 12px; color: var(--theme-color); font-weight: 700; margin-bottom: 8px; display: block; }
+        .auth-input {
+            width: 100%; padding: 15px; border-radius: 12px; border: 1.5px solid var(--border-color);
+            background: var(--input-bg); color: var(--text-main); font-size: 16px; outline: none;
+        }
+        .auth-input:focus { border-color: var(--theme-color); }
+
+        .role-selector { display: flex; gap: 10px; margin-bottom: 25px; }
+        .role-option {
+            flex: 1; padding: 12px; border: 2px solid var(--border-color); border-radius: 12px;
+            cursor: pointer; transition: 0.3s; font-weight: 600; color: var(--text-sub);
+        }
+        .role-option.selected[data-role="taki"] { border-color: #5D8CAE; color: #5D8CAE; background: #EAF4F9; }
+        .role-option.selected[data-role="mitsuha"] { border-color: #FF6B6B; color: #FF6B6B; background: #FFF0F0; }
+
+        .auth-btn {
+            width: 100%; padding: 16px; border-radius: 15px; border: none;
+            background: var(--theme-color); color: white; font-size: 17px; font-weight: 700;
+            cursor: pointer; box-shadow: 0 10px 20px rgba(0,0,0,0.1); transition: 0.3s;
+        }
+        .auth-btn:active { transform: scale(0.98); }
+        .auth-switch { margin-top: 20px; font-size: 14px; color: var(--text-sub); cursor: pointer; }
+        .auth-switch span { color: var(--theme-color); font-weight: 700; }
 
         /* --- ENTRANCE --- */
         #tear-off-overlay {
@@ -343,7 +417,46 @@
         #hidden-pfp-input { display: none; }
     </style>
 </head>
-<body>
+<body onload="initApp()">
+
+<!-- AUTH OVERLAY -->
+<div id="auth-overlay" class="auth-overlay" style="display:none;">
+    <div class="auth-card">
+        <div class="auth-logo"><i class="fas fa-meteor"></i></div>
+        <div class="auth-title" id="auth-title">Welcome Back</div>
+        
+        <div id="signup-fields" style="display:none;">
+            <div class="auth-input-group">
+                <label class="auth-label">USERNAME</label>
+                <input type="text" id="auth-username" class="auth-input" placeholder="Your Name">
+            </div>
+            <label class="auth-label">CHOOSE YOUR ROLE</label>
+            <div class="role-selector">
+                <div class="role-option selected" data-role="taki" onclick="selectRole('taki')">Taki</div>
+                <div class="role-option" data-role="mitsuha" onclick="selectRole('mitsuha')">Mitsuha</div>
+            </div>
+        </div>
+
+        <div class="auth-input-group">
+            <label class="auth-label">EMAIL</label>
+            <input type="email" id="auth-email" class="auth-input" placeholder="email@example.com">
+        </div>
+        <div class="auth-input-group">
+            <label class="auth-label">PASSWORD</label>
+            <input type="password" id="auth-password" class="auth-input" placeholder="••••••••">
+        </div>
+
+        <button class="auth-btn" id="auth-main-btn" onclick="handleAuth()">Login</button>
+        
+        <div class="auth-switch" onclick="handleGuestMode()" style="margin-top: 15px; text-decoration: underline;">
+            Continue as Guest
+        </div>
+
+        <div class="auth-switch" id="auth-switch-text" onclick="toggleAuthMode()">
+            Don't have an account? <span>Create Profile</span>
+        </div>
+    </div>
+</div>
 
 <!-- TEAR-OFF CALENDAR -->
 <div id="tear-off-overlay">
@@ -472,46 +585,182 @@
                     <span>Dark Mode</span>
                     <i class="fas fa-moon" id="dark-mode-icon"></i>
                 </div>
+                <div class="settings-item" onclick="handleLogout()" style="border-top: 1px solid var(--border-color); margin-top: 20px;">
+                    <span style="color:#ff4d4d">Logout</span>
+                    <i class="fas fa-sign-out-alt" style="color:#ff4d4d"></i>
+                </div>
             </div>
         </div>
     </div>
 </div>
 
 <script>
-    // --- APP DATA ---
-    const defaultEntries = [
-        { 
-            date: "12", day: "Thu", time: "23:45", month: "Oct",
-            title: "The Comet", 
-            preview: "It was beautiful. The Tiamat comet...", 
-            full: "I saw the comet today. It split into two. It was the most beautiful scene I've ever seen. I felt a strange sadness looking at it.",
-            weather: "cloud",
-            image: null
-        },
-        { 
-            date: "11", day: "Wed", time: "16:21", month: "Oct",
-            title: "Part-time Job", 
-            preview: "Senpai looked at me today!", 
-            full: "Okudera-senpai actually talked to me today at the restaurant. I was so nervous I almost dropped a tray.",
-            weather: "sun",
-            image: null
-        },
-        { 
-            date: "10", day: "Tue", time: "21:12", month: "Oct",
-            title: "Tokyo Life 3 ❤", 
-            preview: "Went to a cafe in Shinjuku.", 
-            full: "I went to that cafe in Shinjuku today. The pancakes cost 2500 yen! Can you believe it? But they were so fluffy.",
-            weather: "sun",
-            image: null
-        }
-    ];
+    // --- FIREBASE CONFIG ---
+    // PLEASE REPLACE WITH YOUR OWN FIREBASE CONFIG
+    const firebaseConfig = {
+        apiKey: "REPLACE_WITH_YOUR_API_KEY",
+        authDomain: "REPLACE_WITH_YOUR_PROJECT_ID.firebaseapp.com",
+        projectId: "REPLACE_WITH_YOUR_PROJECT_ID",
+        storageBucket: "REPLACE_WITH_YOUR_PROJECT_ID.appspot.com",
+        messagingSenderId: "REPLACE_WITH_YOUR_SENDER_ID",
+        appId: "REPLACE_WITH_YOUR_APP_ID"
+    };
 
-    let entries = JSON.parse(localStorage.getItem('diary_entries')) || defaultEntries;
+    firebase.initializeApp(firebaseConfig);
+    const auth = firebase.auth();
+    const db = firebase.firestore();
+    const storage = firebase.storage();
+
+    // --- APP STATE ---
+    let entries = [];
+    let currentUser = null;
+    let userProfile = null;
+    let isGuest = false;
+    let authMode = 'login'; 
+    let selectedRole = 'taki';
     let currentMood = "sun";
     let currentImage = null;
-    let currentEntryIndex = -1; // To track which entry is open for deletion
+    let currentEntryIndex = -1;
+    let isMitsuha = false;
+    let isDark = false;
+
+    // --- AUTH LOGIC ---
+    function initApp() {
+        initTearOff();
+        auth.onAuthStateChanged(user => {
+            if (user) {
+                currentUser = user;
+                isGuest = false;
+                fetchUserProfile();
+            } else if (!isGuest) {
+                showAuthOverlay();
+            }
+        });
+    }
+
+    function handleGuestMode() {
+        isGuest = true;
+        currentUser = { uid: 'guest' };
+        userProfile = {
+            uid: 'guest',
+            username: 'Guest',
+            role: 'taki',
+            avatarUrl: ''
+        };
+        hideAuthOverlay();
+        loadEntries();
+    }
+
+    async function fetchUserProfile() {
+        const doc = await db.collection('users').doc(currentUser.uid).get();
+        if (doc.exists) {
+            userProfile = doc.data();
+            document.getElementById('settings-pfp').src = userProfile.avatarUrl || 'https://i.pinimg.com/736x/2e/0f/20/2e0f2095037d0563457a4128f7311756.jpg';
+            hideAuthOverlay();
+            loadEntries();
+        } else {
+            // This shouldn't happen if they signed up correctly
+            auth.signOut();
+        }
+    }
+
+    function showAuthOverlay() {
+        document.getElementById('auth-overlay').style.display = 'flex';
+    }
+
+    function hideAuthOverlay() {
+        document.getElementById('auth-overlay').style.display = 'none';
+    }
+
+    function toggleAuthMode() {
+        authMode = authMode === 'login' ? 'signup' : 'login';
+        document.getElementById('auth-title').innerText = authMode === 'login' ? 'Welcome Back' : 'Create Profile';
+        document.getElementById('signup-fields').style.display = authMode === 'signup' ? 'block' : 'none';
+        document.getElementById('auth-main-btn').innerText = authMode === 'login' ? 'Login' : 'Sign Up';
+        document.getElementById('auth-switch-text').innerHTML = authMode === 'login' ? 
+            'Don\'t have an account? <span>Create Profile</span>' : 
+            'Already have an account? <span>Login</span>';
+    }
+
+    function selectRole(role) {
+        selectedRole = role;
+        document.querySelectorAll('.role-option').forEach(opt => {
+            opt.classList.toggle('selected', opt.getAttribute('data-role') === role);
+        });
+    }
+
+    async function handleAuth() {
+        const email = document.getElementById('auth-email').value;
+        const password = document.getElementById('auth-password').value;
+        const username = document.getElementById('auth-username').value;
+
+        if (!email || !password) { alert("Please fill in all fields"); return; }
+
+        try {
+            if (authMode === 'signup') {
+                if (!username) { alert("Please enter a username"); return; }
+                const userCredential = await auth.createUserWithEmailAndPassword(email, password);
+                const user = userCredential.user;
+                
+                const profile = {
+                    uid: user.uid,
+                    username: username,
+                    role: selectedRole,
+                    avatarUrl: ''
+                };
+                
+                await db.collection('users').doc(user.uid).set(profile);
+                userProfile = profile;
+            } else {
+                await auth.signInWithEmailAndPassword(email, password);
+            }
+        } catch (error) {
+            alert(error.message);
+        }
+    }
+
+    function handleLogout() {
+        auth.signOut().then(() => {
+            window.location.reload();
+        });
+    }
 
     // --- ENTRANCE ---
+    async function loadEntries() {
+        if (!userProfile) return;
+
+        const now = new Date();
+        const today = now.getDate();
+        const isEvenDay = today % 2 === 0;
+
+        let displayRole;
+        if (userProfile.role === 'taki') {
+            displayRole = isEvenDay ? 'taki' : 'mitsuha';
+        } else {
+            displayRole = isEvenDay ? 'mitsuha' : 'taki';
+        }
+
+        isMitsuha = (displayRole === 'mitsuha');
+        updateTheme();
+
+        if (isGuest) {
+            const localData = JSON.parse(localStorage.getItem('guest_entries')) || [];
+            entries = localData.filter(e => e.author_role === displayRole);
+            renderEntries();
+            renderCalendar();
+            return;
+        }
+
+        const snapshot = await db.collection('entries')
+            .where('author_role', '==', displayRole)
+            .orderBy('timestamp', 'desc')
+            .get();
+
+        entries = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        renderEntries();
+        renderCalendar();
+    }
+
     function initTearOff() {
         const now = new Date();
         const months = ["JANUARY", "FEBRUARY", "MARCH", "APRIL", "MAY", "JUNE", "JULY", "AUGUST", "SEPTEMBER", "OCTOBER", "NOVEMBER", "DECEMBER"];
@@ -532,17 +781,19 @@
     function renderEntries() {
         const list = document.getElementById('entry-list-container');
         list.innerHTML = '';
-        entries.sort((a, b) => parseInt(b.date) - parseInt(a.date));
+        
+        if (entries.length === 0) {
+            list.innerHTML = '<div style="text-align:center; padding:50px; color:rgba(255,255,255,0.7); font-style:italic;">No entries yet...</div>';
+            return;
+        }
 
         entries.forEach((e, idx) => {
             let iconClass = "fa-sun";
-            if(e.weather.includes('rain')) iconClass = "fa-cloud-rain";
-            else if(e.weather.includes('cloud')) iconClass = "fa-cloud";
-            else if(e.weather.includes('moon')) iconClass = "fa-moon";
+            if(e.weather === 'cloud-rain') iconClass = "fa-cloud-rain";
+            else if(e.weather === 'cloud') iconClass = "fa-cloud";
+            else if(e.weather === 'moon') iconClass = "fa-moon";
 
             const hasImg = e.image ? '<i class="fas fa-image" style="margin-right:5px"></i>' : '';
-
-            // Stagger animation
             const delay = idx * 0.1;
 
             const html = `
@@ -573,9 +824,14 @@
         const grid = document.getElementById('calendar-grid-container');
         grid.innerHTML = '';
         ['SUN','MON','TUE','WED','THU','FRI','SAT'].forEach(d => grid.innerHTML+=`<div class="cal-day-name">${d}</div>`);
-        grid.innerHTML += `<div></div><div></div>`; // Offset
+        
         const now = new Date();
-        for(let i=1; i<=31; i++) {
+        const firstDay = new Date(now.getFullYear(), now.getMonth(), 1).getDay();
+        const daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
+
+        for(let i=0; i<firstDay; i++) grid.innerHTML += `<div></div>`; 
+        
+        for(let i=1; i<=daysInMonth; i++) {
             const hasEntry = entries.some(e => parseInt(e.date) === i);
             const isToday = (i === now.getDate());
             const cls = `${hasEntry?'has-entry':''} ${isToday?'is-today':''}`;
@@ -604,21 +860,21 @@
         currentMood = mood;
     }
 
-    // Camera / Image Logic
     function triggerCamera() {
         document.getElementById('hidden-camera-input').click();
     }
 
-    function handleFileSelect(input) {
+    async function handleFileSelect(input) {
         if (input.files && input.files[0]) {
+            const file = input.files[0];
             const reader = new FileReader();
-            reader.onload = function(e) {
+            reader.onload = async function(e) {
                 currentImage = e.target.result;
                 document.getElementById('preview-img-tag').src = currentImage;
                 document.getElementById('editor-img-preview').style.display = 'flex';
                 switchTab('diary');
             };
-            reader.readAsDataURL(input.files[0]);
+            reader.readAsDataURL(file);
         }
     }
 
@@ -628,35 +884,56 @@
         document.getElementById('hidden-camera-input').value = '';
     }
 
-    function saveNewEntry() {
+    async function saveNewEntry() {
+        if (!currentUser) return;
         const title = document.getElementById('new-title').value;
         const content = document.getElementById('new-content').value;
         if(!title || !content) { alert("Please write something!"); return; }
 
         const now = new Date();
         const days = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+        const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
         
         const newEntry = {
+            author_uid: currentUser.uid,
+            author_role: userProfile.role,
             date: String(now.getDate()),
             day: days[now.getDay()],
             time: `${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`,
-            month: "Oct",
+            month: months[now.getMonth()],
             title: title,
-            preview: content.substring(0, 25) + "...",
+            preview: content.substring(0, 50) + "...",
             full: content,
             weather: currentMood,
-            image: currentImage
+            image: currentImage,
+            timestamp: Date.now() // Use simple timestamp for guest
         };
 
-        entries.unshift(newEntry);
-        localStorage.setItem('diary_entries', JSON.stringify(entries));
-        
-        // Reset Editor
-        document.getElementById('new-title').value = '';
-        document.getElementById('new-content').value = '';
-        clearImage();
-        
-        switchTab('entries');
+        if (isGuest) {
+            const localData = JSON.parse(localStorage.getItem('guest_entries')) || [];
+            newEntry.id = 'guest_' + Date.now();
+            localData.unshift(newEntry);
+            localStorage.setItem('guest_entries', JSON.stringify(localData));
+            
+            document.getElementById('new-title').value = '';
+            document.getElementById('new-content').value = '';
+            clearImage();
+            switchTab('entries');
+            loadEntries();
+            return;
+        }
+
+        try {
+            newEntry.timestamp = firebase.firestore.FieldValue.serverTimestamp();
+            await db.collection('entries').add(newEntry);
+            document.getElementById('new-title').value = '';
+            document.getElementById('new-content').value = '';
+            clearImage();
+            switchTab('entries');
+            loadEntries();
+        } catch (error) {
+            alert("Error saving entry: " + error.message);
+        }
     }
 
     // --- MODAL & DELETE ---
@@ -676,7 +953,7 @@
     function fillModal(e) {
         document.getElementById('m-title').innerText = e.title;
         document.getElementById('m-text').innerText = e.full;
-        document.getElementById('m-date').innerText = `${e.day}, Oct ${e.date}`;
+        document.getElementById('m-date').innerText = `${e.day}, ${e.month} ${e.date}`;
         
         const imgEl = document.getElementById('m-img');
         if(e.image) {
@@ -686,18 +963,38 @@
             imgEl.style.display = 'none';
         }
         
+        // Only show delete button if it's our own entry
+        document.querySelector('.delete-btn').style.visibility = (e.author_uid === currentUser.uid) ? 'visible' : 'hidden';
+        
         document.getElementById('modal').classList.add('open');
     }
     
     function closeModal() { document.getElementById('modal').classList.remove('open'); }
 
-    function deleteCurrentEntry() {
+    async function deleteCurrentEntry() {
+        const entry = entries[currentEntryIndex];
+        if (entry.author_uid !== currentUser.uid) {
+            alert("You can only delete your own entries!");
+            return;
+        }
+
         if(confirm("Delete this entry?")) {
-            entries.splice(currentEntryIndex, 1);
-            localStorage.setItem('diary_entries', JSON.stringify(entries));
-            closeModal();
-            renderEntries();
-            renderCalendar();
+            if (isGuest) {
+                let localData = JSON.parse(localStorage.getItem('guest_entries')) || [];
+                localData = localData.filter(e => e.id !== entry.id);
+                localStorage.setItem('guest_entries', JSON.stringify(localData));
+                closeModal();
+                loadEntries();
+                return;
+            }
+
+            try {
+                await db.collection('entries').doc(entry.id).delete();
+                closeModal();
+                loadEntries();
+            } catch (error) {
+                alert("Error deleting entry: " + error.message);
+            }
         }
     }
 
@@ -713,22 +1010,22 @@
         document.getElementById('hidden-pfp-input').click();
     }
 
-    function handlePfpSelect(input) {
+    async function handlePfpSelect(input) {
         if(input.files && input.files[0]) {
+            const file = input.files[0];
             const reader = new FileReader();
-            reader.onload = function(e) {
-                document.getElementById('settings-pfp').src = e.target.result;
+            reader.onload = async function(e) {
+                const base64 = e.target.result;
+                document.getElementById('settings-pfp').src = base64;
+                // Update profile in Firestore
+                await db.collection('users').doc(currentUser.uid).update({ avatarUrl: base64 });
             };
-            reader.readAsDataURL(input.files[0]);
+            reader.readAsDataURL(file);
         }
     }
 
     // --- THEME ---
-    let isMitsuha = false;
-    let isDark = false;
-
     function switchBody() {
-        // Animation only toggle
         const app = document.getElementById('app-container');
         app.classList.add('swapping');
         setTimeout(() => {
@@ -748,12 +1045,16 @@
         const label = document.getElementById('theme-label');
         if(isMitsuha) {
             root.setAttribute('data-theme', 'mitsuha');
-            label.innerText = "Mitsuha (Pink)";
-            label.style.color = "#FF6B6B";
+            if(label) {
+                label.innerText = "Mitsuha (Pink)";
+                label.style.color = "#FF6B6B";
+            }
         } else {
             root.removeAttribute('data-theme');
-            label.innerText = "Taki (Blue)";
-            label.style.color = "#5D8CAE";
+            if(label) {
+                label.innerText = "Taki (Blue)";
+                label.style.color = "#5D8CAE";
+            }
         }
     }
 
@@ -773,14 +1074,11 @@
     // --- CLOCK ---
     setInterval(() => {
         const now = new Date();
-        document.getElementById('clock').innerText = 
-            `${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
+        const clockEl = document.getElementById('clock');
+        if (clockEl) {
+            clockEl.innerText = `${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
+        }
     }, 1000);
-
-    // Init
-    initTearOff();
-    renderEntries();
-    renderCalendar();
 </script>
 
 </body>
