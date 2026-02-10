@@ -2,365 +2,751 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Life Calendar | Hyper-Real 3D Glass</title>
-    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@200;400;600;800&display=swap" rel="stylesheet">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>My Diary - Your Name</title>
+    
+    <!-- Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
     <style>
         :root {
-            /* Hyper-Real Glass Tokens */
-            --glass-surface: rgba(255, 255, 255, 0.015);
-            --glass-rim: rgba(255, 255, 255, 0.15);
-            --glass-inner-glow: rgba(255, 255, 255, 0.05);
-            --text-primary: #ffffff;
-            --text-secondary: rgba(255, 255, 255, 0.4);
-            
-            /* High-Viscosity Fluid Colors */
-            --w1: #0f172a; --w2: #334155; --w3: #1e293b;
-            
-            /* Adaptive Light Position */
-            --lx: 50%; --ly: 0%;
+            /* TAKI THEME */
+            --theme-color: #5D8CAE; 
+            --theme-light: #EAF4F9;
+            --text-main: #444444;
+            --text-date: #5D8CAE;
+            --text-sub: #666666;
+            --bg-body: #F2F2F2;
+            --bg-app: #FFFFFF;
+            --border-color: rgba(0,0,0,0.1);
+            --bottom-bar: #5D8CAE;
+            --sky-bg: url('https://images.unsplash.com/photo-1506744038136-46273834b3fb?q=80&w=2070&auto=format&fit=crop');
+            --paper-bg: #fff;
+            --input-bg: #fff;
         }
 
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-            font-family: 'Plus Jakarta Sans', sans-serif;
-            user-select: none;
+        [data-theme="mitsuha"] {
+            /* MITSUHA THEME */
+            --theme-color: #FF6B6B;
+            --theme-light: #FFF0F0;
+            --text-date: #FF6B6B;
+            --bottom-bar: #FF6B6B;
+            --sky-bg: url('https://images.unsplash.com/photo-1532978979280-4a674d89a6d5?q=80&w=2670&auto=format&fit=crop');
         }
+
+        [data-dark="true"] {
+            /* DARK MODE OVERRIDES */
+            --bg-body: #000000;
+            --bg-app: #1C1C1E;
+            --text-main: #FFFFFF;
+            --text-sub: #A1A1A1;
+            --border-color: rgba(255,255,255,0.15);
+            --paper-bg: #2C2C2E;
+            --input-bg: #2C2C2E;
+            /* Note: We keep theme colors (Blue/Pink) popping against dark bg */
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
 
         body {
-            background: #000;
-            color: var(--text-primary);
-            min-height: 100vh;
-            width: 100vw;
+            font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+            background-color: var(--bg-body);
+            height: 100vh;
             display: flex;
             justify-content: center;
-            align-items: center;
             overflow: hidden;
+            transition: background-color 0.3s;
+        }
+
+        #app-container {
+            width: 100%; max-width: 450px; background-color: var(--bg-app);
+            height: 100%; position: relative; display: flex; flex-direction: column;
+            box-shadow: 0 0 20px rgba(0,0,0,0.1);
+            transition: background-color 0.3s;
+        }
+
+        /* --- ENTRANCE --- */
+        #tear-off-overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.8); z-index: 9999;
+            display: flex; align-items: center; justify-content: center;
+        }
+        .calendar-paper {
+            width: 280px; height: 380px; background: #fff; position: relative;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5); display: flex; flex-direction: column;
+            text-align: center; transform-origin: top center; cursor: pointer; overflow: hidden;
+            border-top: 10px solid #e0e0e0;
+        }
+        .calendar-paper::before {
+            content: ''; position: absolute; top: -10px; left: 0; width: 100%; height: 10px;
+            background: radial-gradient(circle, #333 2px, transparent 2.5px);
+            background-size: 15px 10px; opacity: 0.3;
+        }
+        .torn-off { animation: tearFall 1s forwards ease-in; pointer-events: none; }
+        @keyframes tearFall {
+            0% { transform: rotate(0deg); }
+            20% { transform: rotate(-5deg) translateY(10px); }
+            100% { transform: rotate(10deg) translateY(100vh); opacity: 0; }
+        }
+        .paper-header { padding: 15px; font-size: 1.2rem; font-weight: 500; color: #fff; background: var(--theme-color); text-transform: uppercase; letter-spacing: 2px; }
+        .paper-body { flex: 1; display: flex; flex-direction: column; justify-content: center; align-items: center; }
+        .paper-date-big { font-size: 8rem; font-weight: 700; color: #333; line-height: 1; }
+        .paper-day { font-size: 1.5rem; color: #888; margin-top: 10px; }
+        .paper-hint { position: absolute; bottom: 20px; width: 100%; font-size: 0.8rem; color: #aaa; animation: blink 2s infinite; }
+        @keyframes blink { 0%,100%{opacity:1;} 50%{opacity:0.5;} }
+
+        /* --- UI COMPONENTS --- */
+        .status-bar {
+            height: 24px; background: var(--bg-app); display: flex; justify-content: space-between;
+            align-items: center; padding: 0 15px; font-size: 12px; color: var(--text-main); font-weight: 500;
+            border-bottom: 1px solid transparent; z-index: 20;
+        }
+
+        header {
+            background: var(--bg-app); padding: 10px 15px 15px 15px;
+            border-bottom: 1px solid var(--border-color); z-index: 10;
+        }
+
+        .segmented-control {
+            display: flex; border: 1px solid var(--theme-color); border-radius: 6px;
+            overflow: hidden; margin-bottom: 10px; height: 32px;
+        }
+        .segment {
+            flex: 1; display: flex; align-items: center; justify-content: center;
+            font-size: 13px; color: var(--theme-color); background: var(--bg-app); cursor: pointer;
+            transition: 0.2s; border-right: 1px solid var(--theme-color);
+        }
+        .segment:last-child { border-right: none; }
+        .segment.active { background: var(--theme-color); color: #fff; }
+        
+        .app-title {
+            text-align: center; color: var(--theme-color); font-size: 18px;
+            font-weight: 400; letter-spacing: 0.5px; margin-top: 5px; cursor: pointer;
+        }
+
+        .view-section {
+            flex: 1; overflow-y: auto; display: none; background: var(--bg-app);
             position: relative;
         }
+        .view-section.active { display: block; }
 
-        /* --- Volumetric Fluid Simulation --- */
-        .liquid-engine {
-            position: fixed;
-            top: 0; left: 0; width: 100%; height: 100%;
-            z-index: -1;
-            filter: blur(100px) contrast(1.2);
-            opacity: 0.8;
-            background: #000;
-        }
-
-        .fluid-layer {
-            position: absolute;
-            width: 200%; height: 200%;
-            top: -50%; left: -50%;
-            background: 
-                radial-gradient(circle at 30% 30%, var(--w1) 0%, transparent 50%),
-                radial-gradient(circle at 70% 60%, var(--w2) 0%, transparent 50%),
-                radial-gradient(circle at 40% 80%, var(--w3) 0%, transparent 50%);
-            animation: moveLiquid 30s infinite alternate ease-in-out;
-        }
-
-        @keyframes moveLiquid {
-            0% { transform: translate(0,0) rotate(0deg) scale(1); }
-            50% { transform: translate(5%, 5%) rotate(5deg) scale(1.1); }
-            100% { transform: translate(-2%, -8%) rotate(-3deg) scale(1); }
-        }
-
-        /* --- 3D Glass Archetecture --- */
-        .glass-chassis {
-            position: relative;
-            width: 96vw;
-            height: 92vh;
-            display: grid;
-            grid-template-columns: minmax(340px, 24%) 1fr;
-            background: var(--glass-surface);
-            
-            /* The Core Refraction */
-            backdrop-filter: blur(80px) saturate(220%) brightness(0.9);
-            -webkit-backdrop-filter: blur(80px) saturate(220%) brightness(0.9);
-            
-            border-radius: 40px;
-            
-            /* Physical Rim & Depth */
-            border: 1px solid var(--glass-rim);
-            box-shadow: 
-                0 50px 100px rgba(0,0,0,0.9),
-                inset 0 0 80px rgba(255,255,255,0.02),
-                inset 0 1px 1px rgba(255,255,255,0.3),
-                inset 0 -1px 20px rgba(0,0,0,0.5);
-            
-            overflow: hidden;
-        }
-
-        /* Dynamic Specular Highlight (The 'Virtual Glass' Secret) */
-        .glass-chassis::before {
-            content: '';
-            position: absolute;
-            top: 0; left: 0; width: 100%; height: 100%;
-            background: radial-gradient(
-                circle at var(--lx) var(--ly), 
-                rgba(255,255,255,0.08) 0%, 
-                transparent 60%
-            );
-            pointer-events: none;
-            z-index: 10;
-        }
-
-        /* --- Sidebar Physical Simulation --- */
-        .sidebar {
-            padding: 4rem 3rem;
-            display: flex;
-            flex-direction: column;
-            border-right: 1px solid rgba(255,255,255,0.08);
-            background: linear-gradient(135deg, rgba(255,255,255,0.02), transparent);
-            position: relative;
-            z-index: 2;
-        }
-
-        .brand-badge {
-            font-size: 0.8rem;
-            letter-spacing: 6px;
-            font-weight: 800;
-            text-transform: uppercase;
-            color: #fff;
-            margin-bottom: 0.5rem;
-            opacity: 0.8;
-            text-shadow: 0 2px 10px rgba(0,0,0,0.5);
-        }
-
-        #ist-clock {
-            font-size: clamp(3rem, 5vw, 5rem);
-            font-weight: 200;
-            letter-spacing: -4px;
-            line-height: 1;
-            margin: 1.5rem 0;
-            filter: drop-shadow(0 5px 15px rgba(0,0,0,0.3));
-        }
-
-        .vial-container {
-            background: rgba(255,255,255,0.03);
-            border: 1px solid rgba(255,255,255,0.05);
-            border-radius: 24px;
-            padding: 1.8rem;
-            margin-bottom: 2rem;
-            box-shadow: inset 0 0 15px rgba(0,0,0,0.2);
-        }
-
-        .vial-label {
-            font-size: 0.65rem;
-            text-transform: uppercase;
-            letter-spacing: 2px;
-            color: var(--text-secondary);
-            margin-bottom: 0.5rem;
+        /* --- ENTRY LIST (WITH SKY BG) --- */
+        #view-entries.active {
+            background-image: var(--sky-bg);
+            background-size: cover;
+            background-position: center;
             display: block;
         }
 
-        .vial-value { font-size: 2.2rem; font-weight: 600; }
+        .entry-list { padding-bottom: 20px; }
 
-        .quote-box {
-            font-style: italic;
-            font-size: 0.95rem;
-            line-height: 1.6;
-            color: rgba(255,255,255,0.7);
-            padding: 1rem 0;
-            border-top: 1px solid rgba(255,255,255,0.05);
+        .entry-item {
+            display: flex; padding: 12px 15px;
+            /* Glass Effect for Entries */
+            background: rgba(255, 255, 255, 0.85);
+            backdrop-filter: blur(5px);
+            -webkit-backdrop-filter: blur(5px);
+            border-bottom: 1px solid rgba(0,0,0,0.05);
+            cursor: pointer; height: 95px;
+            margin-bottom: 1px; /* Slight separation */
+        }
+        
+        /* Dark mode adjustment for entries to keep them readable */
+        [data-dark="true"] .entry-item {
+            background: rgba(30, 30, 30, 0.85);
+            border-bottom: 1px solid rgba(255,255,255,0.05);
         }
 
-        /* --- Main Calendar Engine --- */
-        .main-content {
-            padding: 4rem 5rem;
-            display: flex;
-            flex-direction: column;
-            z-index: 1;
+        .entry-item:active { background: rgba(255,255,255,0.95); }
+        [data-dark="true"] .entry-item:active { background: rgba(40,40,40,0.95); }
+
+        .date-col {
+            width: 50px; display: flex; flex-direction: column; align-items: center;
+            justify-content: center; margin-right: 15px; border-right: 1px solid rgba(0,0,0,0.1);
+        }
+        [data-dark="true"] .date-col { border-right: 1px solid rgba(255,255,255,0.1); }
+
+        .date-num { font-size: 38px; color: var(--text-date); font-weight: 300; line-height: 1; letter-spacing: -2px; }
+        .date-day { font-size: 11px; color: var(--text-sub); text-transform: capitalize; margin-top: 2px; }
+
+        .content-col { flex: 1; display: flex; flex-direction: column; justify-content: center; position: relative; min-width: 0; }
+        
+        .meta-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; }
+        .time { font-size: 11px; color: var(--theme-color); font-weight: 500; }
+        .icons { display: flex; gap: 8px; color: var(--text-sub); font-size: 12px; }
+        
+        .entry-title {
+            font-size: 16px; font-weight: 600; color: var(--text-main); margin-bottom: 4px;
+            white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+        }
+        .entry-excerpt {
+            font-size: 12px; color: var(--text-sub); white-space: nowrap;
+            overflow: hidden; text-overflow: ellipsis; opacity: 0.8;
+        }
+        .paperclip { position: absolute; right: 0; bottom: 5px; color: var(--theme-color); font-size: 14px; }
+
+        /* --- CALENDAR --- */
+        #view-calendar { padding: 20px; }
+        .calendar-header { text-align: center; font-size: 18px; color: var(--theme-color); margin-bottom: 20px; font-weight: 300; }
+        .calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 10px; text-align: center; }
+        .cal-day-name { font-size: 12px; color: var(--text-sub); margin-bottom: 10px; }
+        .cal-date {
+            aspect-ratio: 1; display: flex; align-items: center; justify-content: center;
+            font-size: 14px; color: var(--text-main); border-radius: 50%; cursor: pointer; position: relative;
+        }
+        .cal-date.has-entry { background-color: var(--theme-light); color: var(--theme-color); font-weight: bold; }
+        [data-dark="true"] .cal-date.has-entry { background-color: rgba(93, 140, 174, 0.2); } /* Dark mode fix */
+        [data-dark="true"][data-theme="mitsuha"] .cal-date.has-entry { background-color: rgba(255, 107, 107, 0.2); }
+
+        .cal-date.has-entry::after {
+            content: ''; position: absolute; bottom: 4px; width: 4px; height: 4px;
+            background: var(--theme-color); border-radius: 50%;
+        }
+        .cal-date.is-today { border: 1px solid var(--theme-color); }
+
+        /* --- DIARY EDITOR (Fixed) --- */
+        /* Important: Use display:flex when active to layout correctly */
+        #view-diary.active { display: flex; flex-direction: column; padding: 20px; height: 100%; }
+        
+        .editor-header { display: flex; justify-content: space-between; margin-bottom: 15px; }
+        .editor-options { display: flex; gap: 10px; }
+        
+        .option-btn {
+            background: var(--bg-body); border: 1px solid var(--border-color); border-radius: 4px; padding: 5px 10px;
+            font-size: 12px; color: var(--text-sub); cursor: pointer; display: flex; align-items: center; gap: 5px;
+        }
+        .option-btn.selected { background: var(--theme-color); color: #fff; border-color: var(--theme-color); }
+
+        .editor-group { margin-bottom: 15px; }
+        .editor-label { font-size: 11px; color: var(--theme-color); margin-bottom: 5px; font-weight: bold; display: block; }
+        
+        .editor-input {
+            width: 100%; padding: 12px; font-size: 16px; border: 1px solid var(--border-color);
+            border-radius: 4px; outline: none; font-family: inherit; background: var(--input-bg); color: var(--text-main);
+        }
+        .editor-textarea {
+            width: 100%; flex: 1; padding: 12px; font-size: 16px; border: 1px solid var(--border-color);
+            border-radius: 4px; outline: none; resize: none; line-height: 1.6; font-family: inherit;
+            min-height: 200px; background: var(--input-bg); color: var(--text-main);
+        }
+        .editor-input:focus, .editor-textarea:focus { border-color: var(--theme-color); }
+
+        .image-preview {
+            width: 100%; height: 150px; background: var(--bg-body); border: 1px dashed var(--text-sub);
+            border-radius: 6px; display: none; align-items: center; justify-content: center;
+            margin-bottom: 15px; overflow: hidden; position: relative;
+        }
+        .image-preview img { width: 100%; height: 100%; object-fit: cover; }
+        .remove-img { 
+            position: absolute; top: 5px; right: 5px; background: rgba(0,0,0,0.5); 
+            color: #fff; border-radius: 50%; width: 24px; height: 24px; 
+            display: flex; align-items: center; justify-content: center; cursor: pointer;
         }
 
-        .header-row {
-            display: flex;
-            justify-content: space-between;
-            align-items: baseline;
-            margin-bottom: 3rem;
+        .save-btn {
+            background: var(--theme-color); color: white; border: none; padding: 14px;
+            border-radius: 6px; font-size: 16px; font-weight: bold; cursor: pointer; margin-top: auto;
         }
 
-        .header-row h2 { font-size: 2.5rem; font-weight: 800; letter-spacing: -1px; }
+        /* --- BOTTOM BAR --- */
+        .bottom-bar {
+            height: 50px; background: var(--bottom-bar); display: flex;
+            justify-content: space-between; align-items: center; padding: 0 20px; z-index: 10;
+        }
+        .bar-icon { color: rgba(255,255,255,0.8); font-size: 20px; cursor: pointer; }
+        .bar-icon:hover { color: #fff; transform: scale(1.1); transition: 0.2s; }
 
-        .life-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(14px, 1fr));
-            gap: 12px;
-            overflow-y: auto;
-            flex-grow: 1;
-            padding-right: 20px;
+        /* --- MODAL --- */
+        .modal-overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.5); z-index: 2000; display: none;
+            justify-content: center; align-items: flex-end;
+        }
+        .modal-overlay.open { display: flex; }
+        .paper-sheet {
+            width: 100%; height: 96%; max-width: 450px; background: var(--paper-bg);
+            border-top-left-radius: 15px; border-top-right-radius: 15px;
+            display: flex; flex-direction: column; animation: slideUp 0.3s ease-out;
+        }
+        .sheet-header {
+            padding: 15px; border-bottom: 1px solid var(--border-color); display: flex;
+            justify-content: space-between; align-items: center; background: var(--bg-body);
+            border-top-left-radius: 15px; border-top-right-radius: 15px;
+        }
+        .sheet-body { padding: 25px; flex: 1; overflow-y: auto; line-height: 1.8; color: var(--text-main); font-size: 15px; }
+        .sheet-img { width: 100%; border-radius: 8px; margin-bottom: 15px; margin-top: 10px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
+        .close-btn { color: var(--theme-color); font-weight: bold; cursor: pointer; font-size: 16px; border: none; background: none; }
+        .delete-btn { color: #ff4d4d; cursor: pointer; border: none; background: none; font-size: 16px; }
+        
+        /* --- SETTINGS MENU --- */
+        .settings-list {
+            display: flex; flex-direction: column; padding: 20px;
+        }
+        .settings-item {
+            display: flex; justify-content: space-between; align-items: center;
+            padding: 15px 0; border-bottom: 1px solid var(--border-color);
+            cursor: pointer; color: var(--text-main);
+        }
+        .settings-item:last-child { border-bottom: none; }
+        .profile-edit-wrapper {
+            width: 80px; height: 80px; border-radius: 50%; margin: 0 auto;
+            position: relative; cursor: pointer;
+        }
+        .profile-edit-wrapper img {
+            width: 100%; height: 100%; border-radius: 50%; object-fit: cover;
+            border: 3px solid var(--theme-color);
+        }
+        .edit-badge {
+            position: absolute; bottom: 0; right: 0; background: var(--theme-color);
+            color: #fff; width: 28px; height: 28px; border-radius: 50%;
+            display: flex; align-items: center; justify-content: center; font-size: 12px;
         }
 
-        .life-grid::-webkit-scrollbar { width: 3px; }
-        .life-grid::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 10px; }
-
-        /* Gem Nodes - Realistic Sub-surface Scattering */
-        .gem {
-            aspect-ratio: 1;
-            border-radius: 4px;
-            background: rgba(255,255,255,0.04);
-            border: 1px solid rgba(255,255,255,0.08);
-            box-shadow: inset 0 1px 1px rgba(255,255,255,0.1);
-            transition: transform 0.3s ease;
-        }
-
-        .gem.passed {
-            background: rgba(255,255,255,0.15);
-            border-color: rgba(255,255,255,0.05);
-            box-shadow: none;
-        }
-
-        .gem.today {
-            background: #fff;
-            box-shadow: 0 0 30px #fff, 0 0 60px rgba(255,255,255,0.3);
-            animation: corePulse 3s infinite ease-in-out;
-            z-index: 10;
-        }
-
-        @keyframes corePulse {
-            0%, 100% { transform: scale(1); filter: brightness(1); }
-            50% { transform: scale(1.6); filter: brightness(1.3); }
-        }
-
-        /* Responsive Mobile Tweak */
-        @media (max-width: 1024px) {
-            .glass-chassis { grid-template-columns: 1fr; grid-template-rows: auto 1fr; height: 96vh; }
-            .sidebar { border-right: none; border-bottom: 1px solid rgba(255,255,255,0.08); padding: 2rem; }
-        }
+        @keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
+        .swapping { animation: glitch 0.3s cubic-bezier(.25, .46, .45, .94) both infinite; filter: invert(10%); }
+        @keyframes glitch { 0% { transform: translate(0); } 20% { transform: translate(-2px, 2px); } 40% { transform: translate(-2px, -2px); } 60% { transform: translate(2px, 2px); } 80% { transform: translate(2px, -2px); } 100% { transform: translate(0); } }
+        
+        #hidden-camera-input { display: none; }
+        #hidden-pfp-input { display: none; }
     </style>
 </head>
 <body>
 
-    <div class="liquid-engine">
-        <div class="fluid-layer"></div>
+<!-- TEAR-OFF CALENDAR -->
+<div id="tear-off-overlay">
+    <div class="calendar-paper" onclick="tearPage(this)">
+        <div class="paper-header" id="tear-month">OCTOBER</div>
+        <div class="paper-body">
+            <div class="paper-date-big" id="tear-date">12</div>
+            <div class="paper-day" id="tear-day">Thursday</div>
+        </div>
+        <div class="paper-hint">Tap to Open</div>
+    </div>
+</div>
+
+<div id="app-container">
+    <div class="status-bar">
+        <span id="status-date" style="font-weight: 500;">Oct 12</span>
+        <span id="clock" style="font-weight:600;">12:00</span>
+        <span style="width: 40px;"></span> 
     </div>
 
-    <div class="glass-chassis" id="chassis">
-        <aside class="sidebar">
-            <span class="brand-badge">Vial · Platinum</span>
-            <div id="ist-clock">00:00</div>
-            
-            <div class="vial-container">
-                <span class="vial-label">Life Remaining</span>
-                <div class="vial-value" id="days-left">--</div>
-                <span style="font-size: 0.7rem; color: var(--text-secondary);">DAYS IN THIS CYCLE</span>
-            </div>
+    <header>
+        <div class="segmented-control">
+            <div class="segment active" onclick="switchTab('entries')">Entries</div>
+            <div class="segment" onclick="switchTab('calendar')">Calendar</div>
+            <div class="segment" onclick="switchTab('diary')">Diary</div>
+        </div>
+        <div class="app-title" onclick="switchBody()">Diary</div>
+    </header>
 
-            <div class="vial-container">
-                <span class="vial-label">Weather (IST)</span>
-                <div style="display: flex; justify-content: space-between; align-items: center;">
-                    <div id="temp" style="font-size: 2rem; font-weight: 600;">--°</div>
-                    <div id="weather-status" style="font-size: 0.8rem; opacity: 0.6; text-align: right;">SYNCING</div>
+    <!-- VIEW 1: ENTRIES -->
+    <div class="view-section active" id="view-entries">
+        <div class="entry-list" id="entry-list-container"></div>
+    </div>
+
+    <!-- VIEW 2: CALENDAR -->
+    <div class="view-section" id="view-calendar">
+        <div class="calendar-header" id="cal-main-header">October 2013</div>
+        <div class="calendar-grid" id="calendar-grid-container"></div>
+    </div>
+
+    <!-- VIEW 3: DIARY (EDITOR) -->
+    <div class="view-section" id="view-diary">
+        <div class="editor-header">
+            <div class="editor-options">
+                <button class="option-btn selected" onclick="setMood(this, 'sun')"><i class="fas fa-sun"></i></button>
+                <button class="option-btn" onclick="setMood(this, 'cloud')"><i class="fas fa-cloud"></i></button>
+                <button class="option-btn" onclick="setMood(this, 'cloud-rain')"><i class="fas fa-cloud-rain"></i></button>
+                <button class="option-btn" onclick="setMood(this, 'moon')"><i class="fas fa-moon"></i></button>
+            </div>
+            <div class="editor-options">
+                <button class="option-btn" onclick="triggerCamera()"><i class="fas fa-camera"></i> Photo</button>
+            </div>
+        </div>
+
+        <div class="image-preview" id="editor-img-preview">
+            <div class="remove-img" onclick="clearImage()">&times;</div>
+            <img src="" id="preview-img-tag">
+        </div>
+
+        <div class="editor-group">
+            <label class="editor-label">TITLE</label>
+            <input type="text" class="editor-input" id="new-title" placeholder="e.g., Tokyo Cafe">
+        </div>
+        
+        <div class="editor-group" style="flex:1; display:flex; flex-direction:column;">
+            <label class="editor-label">CONTENT</label>
+            <textarea class="editor-textarea" id="new-content" placeholder="What happened today?"></textarea>
+        </div>
+        
+        <button class="save-btn" onclick="saveNewEntry()">Save Entry</button>
+    </div>
+
+    <!-- BOTTOM BAR -->
+    <div class="bottom-bar">
+        <i class="fas fa-bars bar-icon" onclick="openSettings()"></i>
+        <i class="fas fa-pen bar-icon" onclick="switchTab('diary')"></i>
+        <i class="fas fa-camera bar-icon" onclick="triggerCamera()"></i>
+    </div>
+
+    <!-- HIDDEN INPUTS -->
+    <input type="file" id="hidden-camera-input" accept="image/*" onchange="handleFileSelect(this)">
+    <input type="file" id="hidden-pfp-input" accept="image/*" onchange="handlePfpSelect(this)">
+
+</div>
+
+<!-- READ MODAL -->
+<div class="modal-overlay" id="modal">
+    <div class="paper-sheet">
+        <div class="sheet-header">
+            <!-- Delete button added here -->
+            <button class="delete-btn" onclick="deleteCurrentEntry()"><i class="fas fa-trash"></i></button>
+            <span style="font-size:14px; color:var(--text-sub);" id="m-date">Date</span>
+            <button class="close-btn" onclick="closeModal()">Done</button>
+        </div>
+        <div class="sheet-body">
+            <img id="m-img" class="sheet-img" style="display:none;">
+            <h2 id="m-title" style="margin-bottom: 15px; color: var(--theme-color);">Title</h2>
+            <div id="m-text" style="white-space: pre-wrap;">Content...</div>
+        </div>
+    </div>
+</div>
+
+<!-- SETTINGS MODAL -->
+<div class="modal-overlay" id="settings-modal">
+    <div class="paper-sheet" style="height: auto; max-height: 80%; border-radius: 15px; margin: 20px;">
+        <div class="sheet-header">
+            <span>Settings</span>
+            <button class="close-btn" onclick="closeSettings()">Close</button>
+        </div>
+        <div class="sheet-body" style="padding: 0;">
+            <!-- Profile Section -->
+            <div style="text-align:center; padding: 20px; border-bottom: 1px solid var(--border-color);">
+                <div class="profile-edit-wrapper" onclick="triggerPfpUpload()">
+                    <img id="settings-pfp" src="https://i.pinimg.com/736x/2e/0f/20/2e0f2095037d0563457a4128f7311756.jpg">
+                    <div class="edit-badge"><i class="fas fa-camera"></i></div>
+                </div>
+                <p style="margin-top:10px; font-weight:bold; color: var(--text-main);">My Profile</p>
+            </div>
+            <!-- Settings List -->
+            <div class="settings-list">
+                <div class="settings-item" onclick="toggleThemeManual()">
+                    <span>Theme</span>
+                    <span id="theme-label" style="color:var(--theme-color); font-weight:bold;">Taki (Blue)</span>
+                </div>
+                <div class="settings-item" onclick="toggleDarkMode()">
+                    <span>Dark Mode</span>
+                    <i class="fas fa-moon" id="dark-mode-icon"></i>
                 </div>
             </div>
-
-            <div class="quote-box" id="motivation">
-                "Small daily wins lead to giant results."
-            </div>
-
-            <div style="margin-top: auto;">
-                <span class="vial-label">Momentum</span>
-                <div style="font-size: 2rem; font-weight: 800;" id="momentum-val">0%</div>
-            </div>
-        </aside>
-
-        <main class="main-content">
-            <div class="header-row">
-                <h2 id="year-label">YEAR 2026</h2>
-                <div id="phase-label" style="opacity: 0.5; font-weight: 800; letter-spacing: 2px;">NIGHT</div>
-            </div>
-            <div class="life-grid" id="grid"></div>
-        </main>
+        </div>
     </div>
+</div>
 
-    <script>
-        const quotes = [
-            "Every moment is a fresh beginning.",
-            "Don't count the days. Make the days count.",
-            "Believe you can and you're halfway there.",
-            "Opportunities don't happen, you create them.",
-            "Success is not final, failure is not fatal.",
-            "The only limits are the ones you believe.",
-            "Action is the foundational key to all success.",
-            "It always seems impossible until it's done.",
-            "Create a life you love waking up to.",
-            "Your energy is your greatest asset."
-        ];
-
-        async function fetchWeather() {
-            try {
-                const response = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=19.29&longitude=73.06&current_weather=true`);
-                const data = await response.json();
-                if (data.current_weather) {
-                    document.getElementById('temp').textContent = Math.round(data.current_weather.temperature) + '°';
-                    const map = { 0: 'CLEAR', 1: 'FAIR', 2: 'CLOUDY', 3: 'OVERCAST', 61: 'RAIN' };
-                    document.getElementById('weather-status').textContent = map[data.current_weather.weathercode] || 'CLEAR';
-                }
-            } catch (e) { document.getElementById('weather-status').textContent = "OFFLINE"; }
+<script>
+    // --- APP DATA ---
+    const defaultEntries = [
+        { 
+            date: "12", day: "Thu", time: "23:45", month: "Oct",
+            title: "The Comet", 
+            preview: "It was beautiful. The Tiamat comet...", 
+            full: "I saw the comet today. It split into two. It was the most beautiful scene I've ever seen. I felt a strange sadness looking at it.",
+            weather: "cloud",
+            image: null
+        },
+        { 
+            date: "11", day: "Wed", time: "16:21", month: "Oct",
+            title: "Part-time Job", 
+            preview: "Senpai looked at me today!", 
+            full: "Okudera-senpai actually talked to me today at the restaurant. I was so nervous I almost dropped a tray.",
+            weather: "sun",
+            image: null
+        },
+        { 
+            date: "10", day: "Tue", time: "21:12", month: "Oct",
+            title: "Tokyo Life 3 ❤", 
+            preview: "Went to a cafe in Shinjuku.", 
+            full: "I went to that cafe in Shinjuku today. The pancakes cost 2500 yen! Can you believe it? But they were so fluffy.",
+            weather: "sun",
+            image: null
         }
+    ];
 
-        function updateUI() {
-            const now = new Date();
-            const ist = new Date(now.getTime() + (now.getTimezoneOffset() * 60000) + (5.5 * 3600000));
-            
-            document.getElementById('ist-clock').textContent = ist.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: false });
-            
-            // Light Position Simulation
-            const hrs = ist.getHours();
-            const lightX = (hrs / 24) * 100;
-            document.documentElement.style.setProperty('--lx', `${lightX}%`);
-            document.documentElement.style.setProperty('--ly', hrs < 18 ? '0%' : '100%');
+    let entries = JSON.parse(localStorage.getItem('diary_entries')) || defaultEntries;
+    let currentMood = "sun";
+    let currentImage = null;
+    let currentEntryIndex = -1; // To track which entry is open for deletion
 
-            // Environment Themes
-            let p = "NIGHT", w1="#0f172a", w2="#1e293b", w3="#334155";
-            if (hrs >= 5 && hrs < 12) { p = "MORNING"; w1="#ff9a9e"; w2="#fad0c4"; w3="#ffd1ff"; }
-            else if (hrs >= 12 && hrs < 17) { p = "AFTERNOON"; w1="#0ea5e9"; w2="#22d3ee"; w3="#70e1ff"; }
-            else if (hrs >= 17 && hrs < 20) { p = "EVENING"; w1="#f97316"; w2="#fbbf24"; w3="#ff7b54"; }
+    // --- ENTRANCE ---
+    function initTearOff() {
+        const now = new Date();
+        const months = ["JANUARY", "FEBRUARY", "MARCH", "APRIL", "MAY", "JUNE", "JULY", "AUGUST", "SEPTEMBER", "OCTOBER", "NOVEMBER", "DECEMBER"];
+        const days = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+        document.getElementById('tear-month').innerText = months[now.getMonth()];
+        document.getElementById('tear-date').innerText = now.getDate();
+        document.getElementById('tear-day').innerText = days[now.getDay()];
+        document.getElementById('status-date').innerText = `${months[now.getMonth()].substring(0,3)} ${now.getDate()}`;
+        document.getElementById('cal-main-header').innerText = `${months[now.getMonth()]} ${now.getFullYear()}`;
+    }
 
-            document.getElementById('phase-label').textContent = p;
-            document.documentElement.style.setProperty('--w1', w1);
-            document.documentElement.style.setProperty('--w2', w2);
-            document.documentElement.style.setProperty('--w3', w3);
+    function tearPage(el) {
+        el.classList.add('torn-off');
+        setTimeout(() => document.getElementById('tear-off-overlay').style.display='none', 800);
+    }
 
-            if (ist.getSeconds() === 0 && ist.getMinutes() === 0 && ist.getHours() === 0) renderCalendar();
+    // --- RENDER ---
+    function renderEntries() {
+        const list = document.getElementById('entry-list-container');
+        list.innerHTML = '';
+        entries.sort((a, b) => parseInt(b.date) - parseInt(a.date));
+
+        entries.forEach((e, idx) => {
+            let iconClass = "fa-sun";
+            if(e.weather.includes('rain')) iconClass = "fa-cloud-rain";
+            else if(e.weather.includes('cloud')) iconClass = "fa-cloud";
+            else if(e.weather.includes('moon')) iconClass = "fa-moon";
+
+            const hasImg = e.image ? '<i class="fas fa-image" style="margin-right:5px"></i>' : '';
+
+            const html = `
+            <div class="entry-item" onclick="openModal(${idx})">
+                <div class="date-col">
+                    <span class="date-num">${e.date}</span>
+                    <span class="date-day">${e.day}</span>
+                </div>
+                <div class="content-col">
+                    <div class="meta-row">
+                        <span class="time">${e.time}</span>
+                        <div class="icons">
+                            ${hasImg}
+                            <i class="fas ${iconClass}"></i>
+                            <i class="far fa-smile"></i>
+                        </div>
+                    </div>
+                    <div class="entry-title">${e.title}</div>
+                    <div class="entry-excerpt">${e.preview}</div>
+                    <i class="fas fa-paperclip paperclip"></i>
+                </div>
+            </div>`;
+            list.innerHTML += html;
+        });
+    }
+
+    function renderCalendar() {
+        const grid = document.getElementById('calendar-grid-container');
+        grid.innerHTML = '';
+        ['SUN','MON','TUE','WED','THU','FRI','SAT'].forEach(d => grid.innerHTML+=`<div class="cal-day-name">${d}</div>`);
+        grid.innerHTML += `<div></div><div></div>`; // Offset
+        const now = new Date();
+        for(let i=1; i<=31; i++) {
+            const hasEntry = entries.some(e => parseInt(e.date) === i);
+            const isToday = (i === now.getDate());
+            const cls = `${hasEntry?'has-entry':''} ${isToday?'is-today':''}`;
+            const act = hasEntry ? `onclick="openEntryByDate(${i})"` : '';
+            grid.innerHTML += `<div class="cal-date ${cls}" ${act}>${i}</div>`;
         }
+    }
 
-        function renderCalendar() {
-            const now = new Date();
-            const ist = new Date(now.getTime() + (now.getTimezoneOffset() * 60000) + (5.5 * 3600000));
-            const year = ist.getFullYear();
-            const total = ((year % 4 === 0 && year % 100 !== 0) || (year % 400 === 0)) ? 366 : 365;
-            const start = new Date(year, 0, 0);
-            const current = Math.floor((ist - start) / 86400000);
+    // --- NAVIGATION ---
+    function switchTab(name) {
+        document.querySelectorAll('.segment').forEach(el => el.classList.remove('active'));
+        const idx = {'entries':0, 'calendar':1, 'diary':2}[name];
+        document.querySelectorAll('.segment')[idx].classList.add('active');
+        
+        document.querySelectorAll('.view-section').forEach(el => el.classList.remove('active'));
+        document.getElementById(`view-${name}`).classList.add('active');
+        
+        if(name === 'entries') renderEntries();
+        if(name === 'calendar') renderCalendar();
+    }
 
-            document.getElementById('year-label').textContent = `YEAR ${year}`;
-            document.getElementById('days-left').textContent = total - current;
-            document.getElementById('momentum-val').textContent = ((current / total) * 100).toFixed(1) + '%';
+    // --- EDITOR LOGIC ---
+    function setMood(btn, mood) {
+        document.querySelectorAll('.option-btn').forEach(b => b.classList.remove('selected'));
+        btn.classList.add('selected');
+        currentMood = mood;
+    }
 
-            const grid = document.getElementById('grid');
-            grid.innerHTML = '';
-            const frag = document.createDocumentFragment();
-            for (let i = 1; i <= total; i++) {
-                const gem = document.createElement('div');
-                gem.className = 'gem';
-                if (i < current) gem.classList.add('passed');
-                else if (i === current) gem.classList.add('today');
-                frag.appendChild(gem);
-            }
-            grid.appendChild(frag);
+    // Camera / Image Logic
+    function triggerCamera() {
+        document.getElementById('hidden-camera-input').click();
+    }
+
+    function handleFileSelect(input) {
+        if (input.files && input.files[0]) {
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                currentImage = e.target.result;
+                document.getElementById('preview-img-tag').src = currentImage;
+                document.getElementById('editor-img-preview').style.display = 'flex';
+                switchTab('diary');
+            };
+            reader.readAsDataURL(input.files[0]);
         }
+    }
 
-        window.onload = () => {
-            updateUI();
-            renderCalendar();
-            fetchWeather();
-            document.getElementById('motivation').textContent = `"${quotes[Math.floor(Math.random() * quotes.length)]}"`;
-            setInterval(updateUI, 1000);
-            setInterval(fetchWeather, 600000);
+    function clearImage() {
+        currentImage = null;
+        document.getElementById('editor-img-preview').style.display = 'none';
+        document.getElementById('hidden-camera-input').value = '';
+    }
+
+    function saveNewEntry() {
+        const title = document.getElementById('new-title').value;
+        const content = document.getElementById('new-content').value;
+        if(!title || !content) { alert("Please write something!"); return; }
+
+        const now = new Date();
+        const days = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+        
+        const newEntry = {
+            date: String(now.getDate()),
+            day: days[now.getDay()],
+            time: `${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`,
+            month: "Oct",
+            title: title,
+            preview: content.substring(0, 25) + "...",
+            full: content,
+            weather: currentMood,
+            image: currentImage
         };
-    </script>
+
+        entries.unshift(newEntry);
+        localStorage.setItem('diary_entries', JSON.stringify(entries));
+        
+        // Reset Editor
+        document.getElementById('new-title').value = '';
+        document.getElementById('new-content').value = '';
+        clearImage();
+        
+        switchTab('entries');
+    }
+
+    // --- MODAL & DELETE ---
+    function openModal(idx) { 
+        currentEntryIndex = idx;
+        fillModal(entries[idx]); 
+    }
+    
+    function openEntryByDate(d) {
+        const idx = entries.findIndex(x => parseInt(x.date) === d);
+        if(idx !== -1) {
+            currentEntryIndex = idx;
+            fillModal(entries[idx]);
+        }
+    }
+    
+    function fillModal(e) {
+        document.getElementById('m-title').innerText = e.title;
+        document.getElementById('m-text').innerText = e.full;
+        document.getElementById('m-date').innerText = `${e.day}, Oct ${e.date}`;
+        
+        const imgEl = document.getElementById('m-img');
+        if(e.image) {
+            imgEl.src = e.image;
+            imgEl.style.display = 'block';
+        } else {
+            imgEl.style.display = 'none';
+        }
+        
+        document.getElementById('modal').classList.add('open');
+    }
+    
+    function closeModal() { document.getElementById('modal').classList.remove('open'); }
+
+    function deleteCurrentEntry() {
+        if(confirm("Delete this entry?")) {
+            entries.splice(currentEntryIndex, 1);
+            localStorage.setItem('diary_entries', JSON.stringify(entries));
+            closeModal();
+            renderEntries();
+            renderCalendar();
+        }
+    }
+
+    // --- SETTINGS & PROFILE ---
+    function openSettings() {
+        document.getElementById('settings-modal').classList.add('open');
+    }
+    function closeSettings() {
+        document.getElementById('settings-modal').classList.remove('open');
+    }
+
+    function triggerPfpUpload() {
+        document.getElementById('hidden-pfp-input').click();
+    }
+
+    function handlePfpSelect(input) {
+        if(input.files && input.files[0]) {
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                document.getElementById('settings-pfp').src = e.target.result;
+            };
+            reader.readAsDataURL(input.files[0]);
+        }
+    }
+
+    // --- THEME ---
+    let isMitsuha = false;
+    let isDark = false;
+
+    function switchBody() {
+        // Animation only toggle
+        const app = document.getElementById('app-container');
+        app.classList.add('swapping');
+        setTimeout(() => {
+            isMitsuha = !isMitsuha;
+            updateTheme();
+            app.classList.remove('swapping');
+        }, 300);
+    }
+
+    function toggleThemeManual() {
+        isMitsuha = !isMitsuha;
+        updateTheme();
+    }
+
+    function updateTheme() {
+        const root = document.documentElement;
+        const label = document.getElementById('theme-label');
+        if(isMitsuha) {
+            root.setAttribute('data-theme', 'mitsuha');
+            label.innerText = "Mitsuha (Pink)";
+            label.style.color = "#FF6B6B";
+        } else {
+            root.removeAttribute('data-theme');
+            label.innerText = "Taki (Blue)";
+            label.style.color = "#5D8CAE";
+        }
+    }
+
+    function toggleDarkMode() {
+        isDark = !isDark;
+        const root = document.documentElement;
+        const icon = document.getElementById('dark-mode-icon');
+        if(isDark) {
+            root.setAttribute('data-dark', 'true');
+            icon.className = "fas fa-sun";
+        } else {
+            root.removeAttribute('data-dark');
+            icon.className = "fas fa-moon";
+        }
+    }
+
+    // --- CLOCK ---
+    setInterval(() => {
+        const now = new Date();
+        document.getElementById('clock').innerText = 
+            `${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
+    }, 1000);
+
+    // Init
+    initTearOff();
+    renderEntries();
+    renderCalendar();
+</script>
+
 </body>
 </html>
