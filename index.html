@@ -13,6 +13,7 @@
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-storage-compat.js"></script>
 
     <style>
         :root {
@@ -117,8 +118,16 @@
         
         .app-title { text-align: center; color: var(--theme-color); font-size: 19px; font-weight: 500; margin-top: 10px; }
 
-        .view-section { flex: 1; overflow-y: auto; display: none; -webkit-overflow-scrolling: touch; position: relative; }
+        .view-section { 
+            flex: 1; overflow-y: auto; display: none; 
+            -webkit-overflow-scrolling: touch; position: relative;
+            will-change: transform; /* Performance Boost */
+        }
         .view-section.active { display: flex; flex-direction: column; }
+        
+        /* Optimization: Lazy Load Fade In */
+        .img-lazy { opacity: 0; transition: opacity 0.5s ease-in; }
+        .img-lazy.loaded { opacity: 1; }
 
         /* ENTRIES VIEW */
         #view-entries.active { 
@@ -303,6 +312,7 @@
     firebase.initializeApp(firebaseConfig);
     const auth = firebase.auth();
     const db = firebase.firestore();
+    const storage = firebase.storage();
 
     // --- APP STATE ---
     let currentUser = null;
@@ -388,26 +398,48 @@
         const title = document.getElementById('entry-title').value;
         const content = document.getElementById('entry-content').value;
         if (!title || !content) { alert("Please fill title and content"); return; }
+        
+        const fileInput = document.getElementById('entry-img-input');
+        const file = fileInput.files[0];
+        
+        showPopup("Saving...", "Weaving your memory into the timeline...");
 
         const ist = getIST();
-        db.collection('entries').add({
+        const entryData = {
             author_uid: currentUser.uid,
             role: currentUser.role,
             title: title,
             content: content,
-            image: entryImageData,
             timestamp: ist.getTime(),
             day: ist.getUTCDate(),
             month: ist.toLocaleString('default', { month: 'short' })
-        }).then(() => {
-            document.getElementById('entry-title').value = '';
-            document.getElementById('entry-content').value = '';
-            document.getElementById('entry-img-preview').style.display = 'none';
-            document.getElementById('img-placeholder').style.display = 'block';
-            entryImageData = null;
-            switchTab('entries');
-            showPopup("Saved", "The memory has been woven into Musubi.");
-        });
+        };
+
+        if (file) {
+            const storageRef = storage.ref(`diary_images/${currentUser.uid}/${Date.now()}_${file.name}`);
+            storageRef.put(file).then(snapshot => {
+                snapshot.ref.getDownloadURL().then(url => {
+                    entryData.image = url;
+                    db.collection('entries').add(entryData).then(onEntrySaved);
+                });
+            }).catch(err => {
+                alert("Image upload failed: " + err.message);
+                closePopup();
+            });
+        } else {
+            db.collection('entries').add(entryData).then(onEntrySaved);
+        }
+    }
+
+    function onEntrySaved() {
+        document.getElementById('entry-title').value = '';
+        document.getElementById('entry-content').value = '';
+        document.getElementById('entry-img-preview').style.display = 'none';
+        document.getElementById('img-placeholder').style.display = 'block';
+        document.getElementById('entry-img-input').value = ''; // Clear file input
+        entryImageData = null;
+        switchTab('entries');
+        showPopup("Saved", "The memory has been woven into Musubi.");
     }
 
     // --- THEME & DATA ---
@@ -446,7 +478,7 @@
                                     <div class="entry-excerpt">${data.content}</div>
                                 </div>
                             </div>
-                            ${data.image ? `<img src="${data.image}" class="entry-img-attached">` : ''}
+                            ${data.image ? `<img src="${data.image}" class="entry-img-attached img-lazy" onload="this.classList.add('loaded')">` : ''}
                         </div>
                     `;
                     list.innerHTML += html;
