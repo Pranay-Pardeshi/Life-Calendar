@@ -473,7 +473,31 @@
         <div class="auth-logo"><i class="fas fa-meteor"></i></div>
         <div class="auth-title" id="auth-title">Welcome Back</div>
         
-        <button class="auth-btn" id="google-signin-btn" onclick="signInWithGoogle()">
+        <div id="signup-fields" style="display:none;">
+            <div class="auth-input-group">
+                <label class="auth-label">USERNAME</label>
+                <input type="text" id="auth-username" class="auth-input" placeholder="Your Name">
+            </div>
+        </div>
+
+        <div class="auth-input-group">
+            <label class="auth-label">EMAIL</label>
+            <input type="email" id="auth-email" class="auth-input" placeholder="email@example.com">
+        </div>
+        <div class="auth-input-group">
+            <label class="auth-label">PASSWORD</label>
+            <input type="password" id="auth-password" class="auth-input" placeholder="••••••••">
+        </div>
+
+        <button class="auth-btn" id="auth-main-btn" onclick="handleAuth()">Login</button>
+        
+        <div class="auth-switch" id="auth-switch-text" onclick="toggleAuthMode()">
+            Don't have an account? <span>Create Profile</span>
+        </div>
+
+        <p style="text-align: center; margin: 20px 0; color: var(--text-sub);">or</p>
+
+        <button class="auth-btn" id="google-signin-btn" style="background-color: #4285F4;" onclick="signInWithGoogle()">
             <i class="fab fa-google"></i> Sign in with Google
         </button>
     </div>
@@ -754,7 +778,7 @@
 
         const profile = {
             uid: currentUser.uid,
-            username: currentUser.displayName,
+            username: currentUser.displayName || document.getElementById('auth-username').value, // Get username from Google or form
             email: currentUser.email,
             avatarUrl: currentUser.photoURL || '',
             role: selectedRole,
@@ -809,11 +833,60 @@
         document.getElementById('auth-overlay').style.display = 'none';
     }
 
+    function toggleAuthMode() {
+        authMode = authMode === 'login' ? 'signup' : 'login';
+        document.getElementById('auth-title').innerText = authMode === 'login' ? 'Welcome Back' : 'Create Profile';
+        document.getElementById('signup-fields').style.display = authMode === 'signup' ? 'block' : 'none';
+        document.getElementById('auth-main-btn').innerText = authMode === 'login' ? 'Login' : 'Sign Up';
+        document.getElementById('auth-switch-text').innerHTML = authMode === 'login' ? 
+            'Don\'t have an account? <span>Create Profile</span>' : 
+            'Already have an account? <span>Login</span>';
+    }
+
     function selectRole(role) {
         selectedRole = role;
         document.querySelectorAll('.role-option').forEach(opt => {
             opt.classList.toggle('selected', opt.getAttribute('data-role') === role);
         });
+    }
+
+    async function handleAuth() {
+        const email = document.getElementById('auth-email').value;
+        const password = document.getElementById('auth-password').value;
+        if (!email || !password) {
+            alert("Please fill in all fields");
+            return;
+        }
+
+        showLoader();
+        try {
+            if (authMode === 'signup') {
+                const username = document.getElementById('auth-username').value;
+                if (!username) {
+                    alert("Please enter a username");
+                    hideLoader();
+                    return;
+                }
+                // For email signup, we first create the user, then show role selection.
+                const userCredential = await auth.createUserWithEmailAndPassword(email, password);
+                currentUser = userCredential.user;
+                // Store partial info temporarily, let role selection complete it.
+                 const tempProfile = {
+                    uid: currentUser.uid,
+                    username: username,
+                    email: currentUser.email,
+                };
+                // Don't create the full doc yet. Let onAuthStateChanged handle it.
+                // This is a small change in flow to unify new user experience.
+                
+            } else {
+                await auth.signInWithEmailAndPassword(email, password);
+            }
+            // onAuthStateChanged will now fire and handle the rest of the flow
+        } catch (error) {
+            alert(error.message);
+            hideLoader();
+        }
     }
 
     async function handleLogout() {
