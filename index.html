@@ -436,6 +436,15 @@
             100% { opacity: 0; transform: translate(-50%, -20px); }
         }
 
+        .status-badge {
+            font-size: 10px; padding: 4px 10px; border-radius: 20px;
+            background: #eee; color: #888; font-weight: 700;
+            display: inline-flex; align-items: center; gap: 5px;
+        }
+        .status-badge.green { background: #e6fcf5; color: #0ca678; }
+        .status-badge.green i { color: #0ca678; }
+        .status-badge i { font-size: 6px; }
+
         /* --- LOADING SPINNER --- */
         #loader {
             position: fixed; top: 0; left: 0; width: 100%; height: 100%;
@@ -545,6 +554,11 @@
         <span id="switch-msg">Timeline shift in -- hours</span>
     </div>
 
+    <div id="swap-indicator" class="switch-popup" style="top: 170px; border-color: #FF6B6B; color: #FF6B6B; display: none;">
+        <i class="fas fa-exchange-alt"></i>
+        <span>Body Swap Active: Viewing Partner's Diary</span>
+    </div>
+
     <header>
         <div class="segmented-control">
             <div class="segment active" onclick="switchTab('entries')">Entries</div>
@@ -649,6 +663,14 @@
                     <span>Logged in as</span>
                     <span id="logged-in-username" style="color:var(--theme-color); font-weight:bold;">Loading...</span>
                 </div>
+                <div style="padding: 10px 0; border-bottom: 1px solid var(--border-color);">
+                    <p style="font-size: 12px; font-weight: 700; color: var(--theme-color); margin-bottom: 10px;">SYSTEM HEALTH</p>
+                    <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+                        <span id="status-manifest" class="status-badge"><i class="fas fa-circle"></i> Manifest</span>
+                        <span id="status-sw" class="status-badge"><i class="fas fa-circle"></i> Service Worker</span>
+                        <span id="status-db" class="status-badge green"><i class="fas fa-circle"></i> Database</span>
+                    </div>
+                </div>
                 <div class="settings-item" onclick="toggleDarkMode()">
                     <span>Dark Mode</span>
                     <i class="fas fa-moon" id="dark-mode-icon"></i>
@@ -720,41 +742,54 @@
     }
 
     function showWelcomeToast(isEvenDay, ownRole, viewRole) {
-        if (ownRole === viewRole) return; // Don't show if viewing own diary
+        const indicator = document.getElementById('swap-indicator');
+        if (ownRole !== viewRole) {
+            indicator.style.display = 'flex';
+            indicator.classList.add('visible');
+        } else {
+            indicator.style.display = 'none';
+        }
+    }
 
-        const msg = `It's an ${isEvenDay ? 'even' : 'odd'} day. You're seeing ${viewRole}'s diary.`;
-        const welcomePopup = document.createElement('div');
-        welcomePopup.className = 'switch-popup visible';
-        welcomePopup.style.top = '180px'; // Position below the other popup
-        welcomePopup.innerHTML = `<i class="fas fa-random"></i><span>${msg}</span>`;
-        document.getElementById('app-container').appendChild(welcomePopup);
-        setTimeout(() => welcomePopup.remove(), 5000);
+    function checkSystemHealth() {
+        // Verify Manifest
+        const manifestLink = document.querySelector('link[rel="manifest"]');
+        if (manifestLink) {
+            fetch(manifestLink.href).then(r => {
+                if(r.ok) document.getElementById('status-manifest').classList.add('green');
+            }).catch(() => {});
+        }
+
+        // Verify Service Worker
+        if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
+            document.getElementById('status-sw').classList.add('green');
+        }
     }
 
     // --- AUTH LOGIC ---
     function initApp() {
         initTearOff();
         showSwitchPopup();
+        checkSystemHealth();
         showLoader();
         auth.onAuthStateChanged(async (user) => {
-            if (user) {
-                currentUser = user;
-                // Check if user has a profile in Firestore
-                const userDocRef = db.collection('users').doc(user.uid);
-                const doc = await userDocRef.get();
-
-                if (doc.exists) {
-                    // User exists, fetch profile and load app
-                    await fetchUserProfile();
+            try {
+                if (user) {
+                    currentUser = user;
+                    const doc = await db.collection('users').doc(user.uid).get();
+                    if (doc.exists) {
+                        await fetchUserProfile();
+                    } else {
+                        document.getElementById('auth-overlay').style.display = 'none';
+                        document.getElementById('role-selection-overlay').style.display = 'flex';
+                        hideLoader();
+                    }
                 } else {
-                    // New user, show role selection
-                    document.getElementById('auth-overlay').style.display = 'none';
-                    document.getElementById('role-selection-overlay').style.display = 'flex';
+                    showAuthOverlay();
                     hideLoader();
                 }
-            } else {
-                // No user logged in
-                showAuthOverlay();
+            } catch (err) {
+                console.error("Auth state change error:", err);
                 hideLoader();
             }
         });
@@ -776,9 +811,10 @@
         if (!currentUser) return;
         showLoader();
 
+        const manualUsername = document.getElementById('auth-username').value;
         const profile = {
             uid: currentUser.uid,
-            username: currentUser.displayName || document.getElementById('auth-username').value, // Get username from Google or form
+            username: manualUsername || currentUser.displayName || "Diary User",
             email: currentUser.email,
             avatarUrl: currentUser.photoURL || '',
             role: selectedRole,
@@ -787,9 +823,10 @@
         try {
             await db.collection('users').doc(currentUser.uid).set(profile);
             document.getElementById('role-selection-overlay').style.display = 'none';
-            await fetchUserProfile(); // Fetch the newly created profile
+            userProfile = profile; // Update local state immediately
+            await fetchUserProfile(); 
         } catch (error) {
-            alert(error.message);
+            alert("Error completing registration: " + error.message);
             hideLoader();
         }
     }
@@ -1274,6 +1311,8 @@
             navigator.serviceWorker.register('/service-worker.js')
                 .then(registration => {
                     console.log('ServiceWorker registration successful with scope: ', registration.scope);
+                    // Trigger a health check update once registered
+                    if (registration.active) checkSystemHealth();
                 })
                 .catch(err => {
                     console.log('ServiceWorker registration failed: ', err);
