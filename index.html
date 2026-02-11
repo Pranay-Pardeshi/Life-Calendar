@@ -127,10 +127,17 @@
             background: var(--theme-color); color: white; font-weight: 700; font-size: 16px;
             cursor: pointer; margin-top: 10px;
         }
+        .auth-btn-group {
+            display: flex; gap: 10px; margin-top: 10px; width: 100%;
+        }
+        .auth-btn.secondary { background: #8e8e93; }
         .google-btn {
             width: 100%; padding: 12px; border-radius: 12px; border: 1px solid var(--border-color);
             background: white; color: #444; font-weight: 500; display: flex; align-items: center;
             justify-content: center; gap: 10px; margin-top: 20px; cursor: pointer;
+        }
+        .guest-btn {
+            margin-top: 15px; color: var(--theme-color); cursor: pointer; font-size: 14px; text-decoration: underline;
         }
         .role-selector {
             display: flex; gap: 10px; margin: 20px 0;
@@ -256,17 +263,22 @@
         <div class="auth-card">
             <div class="auth-logo">My Diary</div>
             <div id="auth-form">
-                <input type="text" id="auth-user" class="auth-input" placeholder="Username">
+                <input type="text" id="auth-user" class="auth-input" placeholder="Username (for Sign Up)">
                 <input type="email" id="auth-email" class="auth-input" placeholder="Email">
                 <input type="password" id="auth-pass" class="auth-input" placeholder="Password">
                 
-                <div style="font-size:12px; color:var(--text-sub); margin-bottom:10px;">Who are you?</div>
+                <div style="font-size:12px; color:var(--text-sub); margin-bottom:10px;">Who are you? (for Sign Up)</div>
                 <div class="role-selector">
                     <div class="role-btn active" id="btn-taki" onclick="setRole('Taki')">Taki</div>
                     <div class="role-btn" id="btn-mitsuha" onclick="setRole('Mitsuha')">Mitsuha</div>
                 </div>
 
-                <button class="auth-btn" onclick="handleAuth()">Sign Up / Login</button>
+                <div class="auth-btn-group">
+                    <button class="auth-btn" onclick="handleLogin()">Login</button>
+                    <button class="auth-btn secondary" onclick="handleSignUp()">Sign Up</button>
+                </div>
+                
+                <div class="guest-btn" onclick="guestSignIn()">Continue as Guest</div>
                 
                 <div style="margin:20px 0; color:var(--text-sub); font-size:14px;">OR</div>
                 
@@ -423,8 +435,15 @@
                     setTimeout(() => document.getElementById('auth-overlay').style.display = 'none', 500);
                     checkSwap();
                     findPartner();
+                } else if (user.isAnonymous) {
+                    // Auto-create guest profile if it's an anonymous user and doc is missing
+                    db.collection('users').doc(user.uid).set({
+                        username: "Guest Voyager",
+                        role: 'Taki',
+                        uid: user.uid,
+                        isGuest: true
+                    }).then(() => location.reload());
                 } else {
-                    // Handle case where user is in Auth but not Firestore
                     document.getElementById('auth-overlay').style.display = 'flex';
                 }
             });
@@ -434,25 +453,52 @@
         }
     });
 
-    function handleAuth() {
+    function handleLogin() {
+        const email = document.getElementById('auth-email').value;
+        const pass = document.getElementById('auth-pass').value;
+        if (!email || !pass) { alert("Please fill Email and Password"); return; }
+
+        auth.signInWithEmailAndPassword(email, pass)
+            .then(() => showPopup("Welcome Back", "Successfully logged in!"))
+            .catch(err => {
+                let msg = err.message;
+                if (err.code === 'auth/wrong-password' || err.code === 'auth/user-not-found') {
+                    msg = "Invalid email or password. Please try again.";
+                }
+                alert(msg);
+            });
+    }
+
+    function handleSignUp() {
         const email = document.getElementById('auth-email').value;
         const pass = document.getElementById('auth-pass').value;
         const user = document.getElementById('auth-user').value;
+        if (!email || !pass || !user) { alert("Please fill all fields for Sign Up"); return; }
 
-        auth.signInWithEmailAndPassword(email, pass).catch(err => {
-            if (err.code === 'auth/user-not-found') {
-                auth.createUserWithEmailAndPassword(email, pass).then(cred => {
-                    db.collection('users').doc(cred.user.uid).set({
-                        username: user,
-                        email: email,
-                        role: selectedRole,
-                        uid: cred.user.uid
-                    });
-                });
-            } else {
-                alert(err.message);
-            }
-        });
+        auth.createUserWithEmailAndPassword(email, pass).then(cred => {
+            db.collection('users').doc(cred.user.uid).set({
+                username: user,
+                email: email,
+                role: selectedRole,
+                uid: cred.user.uid
+            }).then(() => {
+                showPopup("Profile Created", `Welcome, ${user}! Your journey starts now.`);
+            });
+        }).catch(err => alert(err.message));
+    }
+
+    function guestSignIn() {
+        auth.signInAnonymously().then(cred => {
+            db.collection('users').doc(cred.user.uid).set({
+                username: "Guest Voyager",
+                email: "anonymous",
+                role: selectedRole,
+                uid: cred.user.uid,
+                isGuest: true
+            }).then(() => {
+                showPopup("Guest Mode", "Entering as a guest. Data may not persist if you log out.");
+            });
+        }).catch(err => alert("Guest Sign-in failed: " + err.message));
     }
 
     function googleSignIn() {
@@ -467,8 +513,17 @@
                         uid: cred.user.uid
                     });
                 }
-                showPopup("Success", "Signed in successfully!");
+                showPopup("Success", "Signed in with Google successfully!");
             });
+        }).catch(err => {
+            console.error(err);
+            if (err.code === 'auth/popup-blocked') {
+                alert("Popup blocked! Please allow popups for this site.");
+            } else if (err.code === 'auth/unauthorized-domain') {
+                alert("This domain is not authorized in Firebase Console. Please add it to 'Authorized Domains' in Authentication settings.");
+            } else {
+                alert("Google Sign-in Error: " + err.message);
+            }
         });
     }
 
