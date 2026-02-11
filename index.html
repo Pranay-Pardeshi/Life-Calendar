@@ -14,6 +14,7 @@
     <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-firestore-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-storage-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-analytics-compat.js"></script>
 
     <style>
         :root {
@@ -27,10 +28,10 @@
             --bg-app: #FFFFFF;
             --border-color: rgba(0,0,0,0.1);
             --bottom-bar: #5D8CAE;
-            --sky-bg: url('https://images.unsplash.com/photo-1506744038136-46273834b3fb?q=80&w=2070&auto=format&fit=crop');
+            --sky-bg: url('Taki.png');
             --paper-bg: #fff;
             --input-bg: #fff;
-            --anime-wallpaper: url('https://images8.alphacoders.com/740/740448.png');
+            --anime-wallpaper: url('Taki.png');
         }
 
         [data-theme="mitsuha"] {
@@ -39,7 +40,8 @@
             --theme-light: #FFF0F0;
             --text-date: #FF6B6B;
             --bottom-bar: #FF6B6B;
-            --sky-bg: url('https://images.unsplash.com/photo-1532978979280-4a674d89a6d5?q=80&w=2670&auto=format&fit=crop');
+            --sky-bg: url('mitsuha.png');
+            --anime-wallpaper: url('mitsuha.png');
         }
 
         [data-dark="true"] {
@@ -413,6 +415,25 @@
         .swapping { animation: glitch 0.3s cubic-bezier(.25, .46, .45, .94) both infinite; filter: invert(10%); }
         @keyframes glitch { 0% { transform: translate(0); } 20% { transform: translate(-2px, 2px); } 40% { transform: translate(-2px, -2px); } 60% { transform: translate(2px, 2px); } 80% { transform: translate(2px, -2px); } 100% { transform: translate(0); } }
         
+        /* --- SWITCH POPUP --- */
+        .switch-popup {
+            position: absolute; top: 120px; left: 50%; transform: translateX(-50%);
+            background: rgba(255, 255, 255, 0.95); padding: 12px 25px; border-radius: 30px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2); z-index: 1000;
+            display: flex; align-items: center; gap: 12px; font-weight: 700; font-size: 14px;
+            color: var(--theme-color); border: 2px solid var(--theme-color);
+            pointer-events: none; opacity: 0;
+            transition: opacity 0.5s;
+        }
+        [data-dark="true"] .switch-popup { background: rgba(30, 30, 30, 0.95); }
+        .switch-popup.visible { animation: fadeInOut 5s forwards; }
+        @keyframes fadeInOut {
+            0% { opacity: 0; transform: translate(-50%, -20px); }
+            10% { opacity: 1; transform: translate(-50%, 0); }
+            90% { opacity: 1; transform: translate(-50%, 0); }
+            100% { opacity: 0; transform: translate(-50%, -20px); }
+        }
+
         #hidden-camera-input { display: none; }
         #hidden-pfp-input { display: none; }
     </style>
@@ -475,6 +496,11 @@
         <span id="status-date" style="font-weight: 500;">Oct 12</span>
         <span id="clock" style="font-weight:600;">12:00</span>
         <span style="width: 40px;"></span> 
+    </div>
+
+    <div id="switch-popup" class="switch-popup">
+        <i class="fas fa-history"></i>
+        <span id="switch-msg">Timeline shift in -- hours</span>
     </div>
 
     <header>
@@ -596,17 +622,18 @@
 
 <script>
     // --- FIREBASE CONFIG ---
-    // PLEASE REPLACE WITH YOUR OWN FIREBASE CONFIG
     const firebaseConfig = {
-        apiKey: "REPLACE_WITH_YOUR_API_KEY",
-        authDomain: "REPLACE_WITH_YOUR_PROJECT_ID.firebaseapp.com",
-        projectId: "REPLACE_WITH_YOUR_PROJECT_ID",
-        storageBucket: "REPLACE_WITH_YOUR_PROJECT_ID.appspot.com",
-        messagingSenderId: "REPLACE_WITH_YOUR_SENDER_ID",
-        appId: "REPLACE_WITH_YOUR_APP_ID"
+        apiKey: "AIzaSyD40csyp5CtEHzwzv6QXCsjwKZXCf7guls",
+        authDomain: "jarvis-website-sign-in-feature.firebaseapp.com",
+        projectId: "jarvis-website-sign-in-feature",
+        storageBucket: "jarvis-website-sign-in-feature.firebasestorage.app",
+        messagingSenderId: "88057670607",
+        appId: "1:88057670607:web:8a4448a53451cde24dc0ba",
+        measurementId: "G-V04D48SN7P"
     };
 
     firebase.initializeApp(firebaseConfig);
+    firebase.analytics(); // Initialize analytics
     const auth = firebase.auth();
     const db = firebase.firestore();
     const storage = firebase.storage();
@@ -624,9 +651,34 @@
     let isMitsuha = false;
     let isDark = false;
 
+    // --- IST TIME HELPERS ---
+    function getISTDate() {
+        const now = new Date();
+        const istOffset = 5.5 * 60 * 60 * 1000;
+        return new Date(now.getTime() + (now.getTimezoneOffset() * 60000) + istOffset);
+    }
+
+    function showSwitchPopup() {
+        const istNow = getISTDate();
+        const nextSwitch = new Date(istNow);
+        nextSwitch.setHours(24, 0, 0, 0);
+        const diffMs = nextSwitch - istNow;
+        const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+        const diffMins = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
+        
+        const msg = diffHours > 0 ? 
+            `Timeline shift in ${diffHours} hours` : 
+            `Timeline shift in ${diffMins} minutes`;
+            
+        const popup = document.getElementById('switch-popup');
+        document.getElementById('switch-msg').innerText = msg;
+        popup.classList.add('visible');
+    }
+
     // --- AUTH LOGIC ---
     function initApp() {
         initTearOff();
+        showSwitchPopup();
         auth.onAuthStateChanged(user => {
             if (user) {
                 currentUser = user;
@@ -729,11 +781,13 @@
     async function loadEntries() {
         if (!userProfile) return;
 
-        const now = new Date();
-        const today = now.getDate();
+        const istNow = getISTDate();
+        const today = istNow.getDate();
         const isEvenDay = today % 2 === 0;
 
         let displayRole;
+        // If we are currently in a manual toggle state, we might want to respect that, 
+        // but the "Twist" says it's automatic. Let's make it automatic based on IST.
         if (userProfile.role === 'taki') {
             displayRole = isEvenDay ? 'taki' : 'mitsuha';
         } else {
@@ -745,31 +799,44 @@
 
         if (isGuest) {
             const localData = JSON.parse(localStorage.getItem('guest_entries')) || [];
+            // Filter entries to show the entries of the "other" role if it's the wrong day
             entries = localData.filter(e => e.author_role === displayRole);
             renderEntries();
             renderCalendar();
             return;
         }
 
-        const snapshot = await db.collection('entries')
-            .where('author_role', '==', displayRole)
-            .orderBy('timestamp', 'desc')
-            .get();
+        try {
+            const snapshot = await db.collection('entries')
+                .where('author_role', '==', displayRole)
+                .orderBy('timestamp', 'desc')
+                .get();
 
-        entries = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-        renderEntries();
-        renderCalendar();
+            entries = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+            renderEntries();
+            renderCalendar();
+        } catch (error) {
+            console.error("Error loading entries:", error);
+            // Fallback if no index exists yet
+            const snapshot = await db.collection('entries')
+                .where('author_role', '==', displayRole)
+                .get();
+            entries = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }))
+                .sort((a,b) => (b.timestamp?.seconds || 0) - (a.timestamp?.seconds || 0));
+            renderEntries();
+            renderCalendar();
+        }
     }
 
     function initTearOff() {
-        const now = new Date();
+        const istNow = getISTDate();
         const months = ["JANUARY", "FEBRUARY", "MARCH", "APRIL", "MAY", "JUNE", "JULY", "AUGUST", "SEPTEMBER", "OCTOBER", "NOVEMBER", "DECEMBER"];
         const days = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
-        document.getElementById('tear-month').innerText = months[now.getMonth()];
-        document.getElementById('tear-date').innerText = now.getDate();
-        document.getElementById('tear-day').innerText = days[now.getDay()];
-        document.getElementById('status-date').innerText = `${months[now.getMonth()].substring(0,3)} ${now.getDate()}`;
-        document.getElementById('cal-main-header').innerText = `${months[now.getMonth()]} ${now.getFullYear()}`;
+        document.getElementById('tear-month').innerText = months[istNow.getMonth()];
+        document.getElementById('tear-date').innerText = istNow.getDate();
+        document.getElementById('tear-day').innerText = days[istNow.getDay()];
+        document.getElementById('status-date').innerText = `${months[istNow.getMonth()].substring(0,3)} ${istNow.getDate()}`;
+        document.getElementById('cal-main-header').innerText = `${months[istNow.getMonth()]} ${istNow.getFullYear()}`;
     }
 
     function tearPage(el) {
@@ -783,7 +850,9 @@
         list.innerHTML = '';
         
         if (entries.length === 0) {
-            list.innerHTML = '<div style="text-align:center; padding:50px; color:rgba(255,255,255,0.7); font-style:italic;">No entries yet...</div>';
+            list.innerHTML = `<div style="text-align:center; padding:50px; color:rgba(255,255,255,0.7); font-style:italic;">
+                No ${isMitsuha ? "Mitsuha's" : "Taki's"} entries yet...
+            </div>`;
             return;
         }
 
@@ -1025,12 +1094,31 @@
     }
 
     // --- THEME ---
-    function switchBody() {
+    async function switchBody() {
         const app = document.getElementById('app-container');
         app.classList.add('swapping');
-        setTimeout(() => {
-            isMitsuha = !isMitsuha;
+        
+        // Manual override for role display
+        isMitsuha = !isMitsuha;
+        const targetRole = isMitsuha ? 'mitsuha' : 'taki';
+        
+        setTimeout(async () => {
             updateTheme();
+            
+            // Reload entries for the manually selected role
+            if (isGuest) {
+                const localData = JSON.parse(localStorage.getItem('guest_entries')) || [];
+                entries = localData.filter(e => e.author_role === targetRole);
+            } else {
+                const snapshot = await db.collection('entries')
+                    .where('author_role', '==', targetRole)
+                    .orderBy('timestamp', 'desc')
+                    .get();
+                entries = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+            }
+            
+            renderEntries();
+            renderCalendar();
             app.classList.remove('swapping');
         }, 300);
     }
@@ -1038,6 +1126,24 @@
     function toggleThemeManual() {
         isMitsuha = !isMitsuha;
         updateTheme();
+        // Also trigger reload for settings change
+        const targetRole = isMitsuha ? 'mitsuha' : 'taki';
+        loadManualRole(targetRole);
+    }
+
+    async function loadManualRole(role) {
+        if (isGuest) {
+            const localData = JSON.parse(localStorage.getItem('guest_entries')) || [];
+            entries = localData.filter(e => e.author_role === role);
+        } else {
+            const snapshot = await db.collection('entries')
+                .where('author_role', '==', role)
+                .orderBy('timestamp', 'desc')
+                .get();
+            entries = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        }
+        renderEntries();
+        renderCalendar();
     }
 
     function updateTheme() {
