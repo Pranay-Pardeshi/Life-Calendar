@@ -4,6 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>My Diary - Your Name</title>
+    <link rel="manifest" href="/manifest.json">
+    <meta name="theme-color" content="#5D8CAE">
     
     <!-- Fonts -->
     <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
@@ -471,32 +473,27 @@
         <div class="auth-logo"><i class="fas fa-meteor"></i></div>
         <div class="auth-title" id="auth-title">Welcome Back</div>
         
-        <div id="signup-fields" style="display:none;">
-            <div class="auth-input-group">
-                <label class="auth-label">USERNAME</label>
-                <input type="text" id="auth-username" class="auth-input" placeholder="Your Name">
-            </div>
-            <label class="auth-label">CHOOSE YOUR ROLE</label>
-            <div class="role-selector">
-                <div class="role-option selected" data-role="taki" onclick="selectRole('taki')">Taki</div>
-                <div class="role-option" data-role="mitsuha" onclick="selectRole('mitsuha')">Mitsuha</div>
-            </div>
-        </div>
+        <button class="auth-btn" id="google-signin-btn" onclick="signInWithGoogle()">
+            <i class="fab fa-google"></i> Sign in with Google
+        </button>
+    </div>
+</div>
 
-        <div class="auth-input-group">
-            <label class="auth-label">EMAIL</label>
-            <input type="email" id="auth-email" class="auth-input" placeholder="email@example.com">
-        </div>
-        <div class="auth-input-group">
-            <label class="auth-label">PASSWORD</label>
-            <input type="password" id="auth-password" class="auth-input" placeholder="••••••••">
-        </div>
-
-        <button class="auth-btn" id="auth-main-btn" onclick="handleAuth()">Login</button>
+<!-- ROLE SELECTION MODAL (for new users) -->
+<div id="role-selection-overlay" class="auth-overlay" style="display:none;">
+    <div class="auth-card">
+        <div class="auth-logo"><i class="fas fa-user-check"></i></div>
+        <div class="auth-title">Choose Your Role</div>
         
-        <div class="auth-switch" id="auth-switch-text" onclick="toggleAuthMode()">
-            Don't have an account? <span>Create Profile</span>
+        <p style="color: var(--text-sub); margin-bottom: 25px;">This choice is permanent and links you to your partner's diary.</p>
+
+        <label class="auth-label">SELECT YOUR CHARACTER</label>
+        <div class="role-selector">
+            <div class="role-option selected" data-role="taki" onclick="selectRole('taki')">Taki</div>
+            <div class="role-option" data-role="mitsuha" onclick="selectRole('mitsuha')">Mitsuha</div>
         </div>
+
+        <button class="auth-btn" onclick="completeRegistration()">Confirm Role & Enter Diary</button>
     </div>
 </div>
 
@@ -698,20 +695,79 @@
         popup.classList.add('visible');
     }
 
+    function showWelcomeToast(isEvenDay, ownRole, viewRole) {
+        if (ownRole === viewRole) return; // Don't show if viewing own diary
+
+        const msg = `It's an ${isEvenDay ? 'even' : 'odd'} day. You're seeing ${viewRole}'s diary.`;
+        const welcomePopup = document.createElement('div');
+        welcomePopup.className = 'switch-popup visible';
+        welcomePopup.style.top = '180px'; // Position below the other popup
+        welcomePopup.innerHTML = `<i class="fas fa-random"></i><span>${msg}</span>`;
+        document.getElementById('app-container').appendChild(welcomePopup);
+        setTimeout(() => welcomePopup.remove(), 5000);
+    }
+
     // --- AUTH LOGIC ---
     function initApp() {
         initTearOff();
         showSwitchPopup();
         showLoader();
-        auth.onAuthStateChanged(user => {
+        auth.onAuthStateChanged(async (user) => {
             if (user) {
                 currentUser = user;
-                fetchUserProfile();
+                // Check if user has a profile in Firestore
+                const userDocRef = db.collection('users').doc(user.uid);
+                const doc = await userDocRef.get();
+
+                if (doc.exists) {
+                    // User exists, fetch profile and load app
+                    await fetchUserProfile();
+                } else {
+                    // New user, show role selection
+                    document.getElementById('auth-overlay').style.display = 'none';
+                    document.getElementById('role-selection-overlay').style.display = 'flex';
+                    hideLoader();
+                }
             } else {
+                // No user logged in
                 showAuthOverlay();
                 hideLoader();
             }
         });
+    }
+
+    async function signInWithGoogle() {
+        showLoader();
+        const provider = new firebase.auth.GoogleAuthProvider();
+        try {
+            await auth.signInWithPopup(provider);
+            // onAuthStateChanged will handle the rest
+        } catch (error) {
+            alert(error.message);
+            hideLoader();
+        }
+    }
+
+    async function completeRegistration() {
+        if (!currentUser) return;
+        showLoader();
+
+        const profile = {
+            uid: currentUser.uid,
+            username: currentUser.displayName,
+            email: currentUser.email,
+            avatarUrl: currentUser.photoURL || '',
+            role: selectedRole,
+        };
+
+        try {
+            await db.collection('users').doc(currentUser.uid).set(profile);
+            document.getElementById('role-selection-overlay').style.display = 'none';
+            await fetchUserProfile(); // Fetch the newly created profile
+        } catch (error) {
+            alert(error.message);
+            hideLoader();
+        }
     }
 
     async function fetchUserProfile() {
@@ -722,9 +778,10 @@
                 document.getElementById('settings-pfp').src = userProfile.avatarUrl || 'https://i.pinimg.com/originals/2e/0f/20/2e0f2095037d0563457a4128f7311756.jpg';
                 hideAuthOverlay();
                 await loadEntries();
-                displayLoggedInUser(); // Display username after successful login
+                displayLoggedInUser();
             } else {
-                auth.signOut(); // User exists in auth but not in DB, force logout
+                // This case should ideally not be hit with the new flow
+                auth.signOut();
             }
         } catch(err) {
             console.error(err);
@@ -752,58 +809,11 @@
         document.getElementById('auth-overlay').style.display = 'none';
     }
 
-    function toggleAuthMode() {
-        authMode = authMode === 'login' ? 'signup' : 'login';
-        document.getElementById('auth-title').innerText = authMode === 'login' ? 'Welcome Back' : 'Create Profile';
-        document.getElementById('signup-fields').style.display = authMode === 'signup' ? 'block' : 'none';
-        document.getElementById('auth-main-btn').innerText = authMode === 'login' ? 'Login' : 'Sign Up';
-        document.getElementById('auth-switch-text').innerHTML = authMode === 'login' ? 
-            'Don\'t have an account? <span>Create Profile</span>' : 
-            'Already have an account? <span>Login</span>';
-    }
-
     function selectRole(role) {
         selectedRole = role;
         document.querySelectorAll('.role-option').forEach(opt => {
             opt.classList.toggle('selected', opt.getAttribute('data-role') === role);
         });
-    }
-
-    async function handleAuth() {
-        const email = document.getElementById('auth-email').value;
-        const password = document.getElementById('auth-password').value;
-        const username = document.getElementById('auth-username').value;
-
-        if (!email || !password) { alert("Please fill in all fields"); return; }
-        
-        showLoader();
-        try {
-            if (authMode === 'signup') {
-                if (!username) { 
-                    alert("Please enter a username"); 
-                    hideLoader();
-                    return; 
-                }
-                const userCredential = await auth.createUserWithEmailAndPassword(email, password);
-                const user = userCredential.user;
-                
-                const profile = {
-                    uid: user.uid,
-                    username: username,
-                    role: selectedRole,
-                    avatarUrl: ''
-                };
-                
-                await db.collection('users').doc(user.uid).set(profile);
-                // onAuthStateChanged will handle hiding the loader after profile is fetched
-            } else {
-                await auth.signInWithEmailAndPassword(email, password);
-                // onAuthStateChanged will handle hiding the loader
-            }
-        } catch (error) {
-            alert(error.message);
-            hideLoader();
-        }
     }
 
     async function handleLogout() {
@@ -837,11 +847,9 @@
 
         isMitsuha = (displayRole === 'mitsuha');
         updateTheme();
+        showWelcomeToast(isEvenDay, userProfile.role, displayRole);
         
         try {
-            // This query requires a composite index in Firestore. 
-            // If you see a "failed-precondition" error in the browser console,
-            // it will contain a link to create the index in your Firebase project.
             const snapshot = await db.collection('entries')
                 .where('author_role', '==', displayRole)
                 .orderBy('timestamp', 'desc')
@@ -853,7 +861,6 @@
             if (error.code === 'failed-precondition') {
                 console.warn("QUERY REQUIRES INDEX: A composite index is needed for this query to work efficiently. Please create it in your Firebase console. The link to create it should be in the error message in your browser's developer console.");
             }
-            // Fallback for when index is missing - less efficient
             const snapshot = await db.collection('entries')
                 .where('author_role', '==', displayRole)
                 .get();
@@ -1009,7 +1016,6 @@
 
         try {
             if (currentImageFile) {
-                // Upload to Firebase Storage
                 const filePath = `diary_images/${currentUser.uid}/${Date.now()}_${currentImageFile.name}`;
                 const fileRef = storage.ref(filePath);
                 await fileRef.put(currentImageFile);
@@ -1027,13 +1033,12 @@
                 preview: content.substring(0, 50) + "...",
                 full: content,
                 weather: currentMood,
-                image: imageUrl, // This is now a URL
+                image: imageUrl,
                 timestamp: firebase.firestore.FieldValue.serverTimestamp()
             };
 
             await db.collection('entries').add(newEntry);
             
-            // Reset editor and refresh
             document.getElementById('new-title').value = '';
             document.getElementById('new-content').value = '';
             clearImage();
@@ -1041,7 +1046,8 @@
             await loadEntries();
         } catch (error) {
             alert("Error saving entry: " + error.message);
-            hideLoader();
+        } finally {
+            hideLoader(); // Ensure loader is always hidden
         }
     }
 
@@ -1079,7 +1085,6 @@
             imgEl.style.display = 'none';
         }
         
-        // Only show delete button if it's our own entry
         document.querySelector('.delete-btn').style.visibility = (e.author_uid === currentUser.uid) ? 'visible' : 'hidden';
         
         document.getElementById('modal').classList.add('open');
@@ -1097,7 +1102,6 @@
         if(confirm("Delete this entry?")) {
             showLoader();
             try {
-                // Also delete image from storage if it exists
                 if (entry.image) {
                     try {
                         const imageRef = storage.refFromURL(entry.image);
@@ -1111,6 +1115,7 @@
                 await loadEntries();
             } catch (error) {
                 alert("Error deleting entry: " + error.message);
+            } finally {
                 hideLoader();
             }
         }
@@ -1189,6 +1194,19 @@
             clockEl.innerText = `${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
         }
     }, 1000);
+
+    // --- PWA Service Worker Registration ---
+    if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+            navigator.serviceWorker.register('/service-worker.js')
+                .then(registration => {
+                    console.log('ServiceWorker registration successful with scope: ', registration.scope);
+                })
+                .catch(err => {
+                    console.log('ServiceWorker registration failed: ', err);
+                });
+        });
+    }
 </script>
 
 </body>
