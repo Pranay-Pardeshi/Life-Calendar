@@ -494,10 +494,6 @@
 
         <button class="auth-btn" id="auth-main-btn" onclick="handleAuth()">Login</button>
         
-        <div class="auth-switch" onclick="handleGuestMode()" style="margin-top: 15px; text-decoration: underline;">
-            Continue as Guest
-        </div>
-
         <div class="auth-switch" id="auth-switch-text" onclick="toggleAuthMode()">
             Don't have an account? <span>Create Profile</span>
         </div>
@@ -624,10 +620,14 @@
                     <img id="settings-pfp" src="https://i.pinimg.com/736x/2e/0f/20/2e0f2095037d0563457a4128f7311756.jpg">
                     <div class="edit-badge"><i class="fas fa-camera"></i></div>
                 </div>
-                <p style="margin-top:15px; font-weight:bold; color: var(--text-main); font-size: 1.1rem;">My Profile</p>
+                <p id="settings-profile-username" style="margin-top:15px; font-weight:bold; color: var(--text-main); font-size: 1.1rem;">My Profile</p>
             </div>
             <!-- Settings List -->
             <div class="settings-list">
+                <div class="settings-item">
+                    <span>Logged in as</span>
+                    <span id="logged-in-username" style="color:var(--theme-color); font-weight:bold;">Loading...</span>
+                </div>
                 <div class="settings-item" onclick="toggleDarkMode()">
                     <span>Dark Mode</span>
                     <i class="fas fa-moon" id="dark-mode-icon"></i>
@@ -663,7 +663,6 @@
     let entries = [];
     let currentUser = null;
     let userProfile = null;
-    let isGuest = false;
     let authMode = 'login'; 
     let selectedRole = 'taki';
     let currentMood = "sun";
@@ -707,27 +706,12 @@
         auth.onAuthStateChanged(user => {
             if (user) {
                 currentUser = user;
-                isGuest = false;
                 fetchUserProfile();
-            } else if (!isGuest) {
+            } else {
                 showAuthOverlay();
                 hideLoader();
             }
         });
-    }
-
-    function handleGuestMode() {
-        isGuest = true;
-        currentUser = { uid: 'guest' };
-        userProfile = {
-            uid: 'guest',
-            username: 'Guest',
-            role: 'taki',
-            avatarUrl: ''
-        };
-        hideAuthOverlay();
-        showLoader();
-        loadEntries();
     }
 
     async function fetchUserProfile() {
@@ -738,6 +722,7 @@
                 document.getElementById('settings-pfp').src = userProfile.avatarUrl || 'https://i.pinimg.com/originals/2e/0f/20/2e0f2095037d0563457a4128f7311756.jpg';
                 hideAuthOverlay();
                 await loadEntries();
+                displayLoggedInUser(); // Display username after successful login
             } else {
                 auth.signOut(); // User exists in auth but not in DB, force logout
             }
@@ -745,6 +730,17 @@
             console.error(err);
             alert("Could not fetch user profile.");
             hideLoader();
+        }
+    }
+
+    function displayLoggedInUser() {
+        const usernameEl = document.getElementById('logged-in-username');
+        if (usernameEl && userProfile && userProfile.username) {
+            usernameEl.innerText = userProfile.username;
+        }
+        const profileNameEl = document.getElementById('settings-profile-username');
+        if (profileNameEl && userProfile && userProfile.username) {
+            profileNameEl.innerText = userProfile.username;
         }
     }
 
@@ -841,15 +837,6 @@
 
         isMitsuha = (displayRole === 'mitsuha');
         updateTheme();
-
-        if (isGuest) {
-            const localData = JSON.parse(localStorage.getItem('guest_entries')) || [];
-            entries = localData.filter(e => e.author_role === displayRole);
-            renderEntries();
-            renderCalendar();
-            hideLoader();
-            return;
-        }
         
         try {
             // This query requires a composite index in Firestore. 
@@ -1022,16 +1009,11 @@
 
         try {
             if (currentImageFile) {
-                if (isGuest) {
-                    // For guests, convert to base64
-                    imageUrl = await toBase64(currentImageFile);
-                } else {
-                    // For logged-in users, upload to Firebase Storage
-                    const filePath = `diary_images/${currentUser.uid}/${Date.now()}_${currentImageFile.name}`;
-                    const fileRef = storage.ref(filePath);
-                    await fileRef.put(currentImageFile);
-                    imageUrl = await fileRef.getDownloadURL();
-                }
+                // Upload to Firebase Storage
+                const filePath = `diary_images/${currentUser.uid}/${Date.now()}_${currentImageFile.name}`;
+                const fileRef = storage.ref(filePath);
+                await fileRef.put(currentImageFile);
+                imageUrl = await fileRef.getDownloadURL();
             }
 
             const newEntry = {
@@ -1045,18 +1027,11 @@
                 preview: content.substring(0, 50) + "...",
                 full: content,
                 weather: currentMood,
-                image: imageUrl, // This is now a URL or base64
-                timestamp: isGuest ? Date.now() : firebase.firestore.FieldValue.serverTimestamp()
+                image: imageUrl, // This is now a URL
+                timestamp: firebase.firestore.FieldValue.serverTimestamp()
             };
 
-            if (isGuest) {
-                const localData = JSON.parse(localStorage.getItem('guest_entries')) || [];
-                newEntry.id = 'guest_' + Date.now();
-                localData.unshift(newEntry);
-                localStorage.setItem('guest_entries', JSON.stringify(localData));
-            } else {
-                await db.collection('entries').add(newEntry);
-            }
+            await db.collection('entries').add(newEntry);
             
             // Reset editor and refresh
             document.getElementById('new-title').value = '';
@@ -1121,15 +1096,6 @@
 
         if(confirm("Delete this entry?")) {
             showLoader();
-            if (isGuest) {
-                let localData = JSON.parse(localStorage.getItem('guest_entries')) || [];
-                localData = localData.filter(e => e.id !== entry.id);
-                localStorage.setItem('guest_entries', JSON.stringify(localData));
-                closeModal();
-                await loadEntries();
-                return;
-            }
-
             try {
                 // Also delete image from storage if it exists
                 if (entry.image) {
@@ -1167,14 +1133,6 @@
             const file = input.files[0];
             showLoader();
             try {
-                if (isGuest) {
-                    // For guests, just show preview
-                    const base64 = await toBase64(file);
-                    document.getElementById('settings-pfp').src = base64;
-                    hideLoader();
-                    return;
-                }
-                
                 // Upload for logged-in users
                 const filePath = `avatars/${currentUser.uid}/${file.name}`;
                 const fileRef = storage.ref(filePath);
