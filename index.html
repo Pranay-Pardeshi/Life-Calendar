@@ -434,11 +434,36 @@
             100% { opacity: 0; transform: translate(-50%, -20px); }
         }
 
+        /* --- LOADING SPINNER --- */
+        #loader {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.7);
+            z-index: 99999;
+            display: none; /* Hidden by default */
+            align-items: center; justify-content: center;
+            backdrop-filter: blur(5px);
+        }
+        .spinner {
+            width: 50px; height: 50px;
+            border: 5px solid rgba(255,255,255,0.3);
+            border-top-color: var(--theme-color);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
         #hidden-camera-input { display: none; }
         #hidden-pfp-input { display: none; }
     </style>
 </head>
 <body onload="initApp()">
+
+<!-- LOADER -->
+<div id="loader">
+    <div class="spinner"></div>
+</div>
 
 <!-- AUTH OVERLAY -->
 <div id="auth-overlay" class="auth-overlay" style="display:none;">
@@ -642,12 +667,15 @@
     let authMode = 'login'; 
     let selectedRole = 'taki';
     let currentMood = "sun";
-    let currentImage = null;
+    let currentImageFile = null; // This will hold the actual file for uploads
     let currentEntryIndex = -1;
     let isMitsuha = false;
     let isDark = false;
 
-    // --- IST TIME HELPERS ---
+    // --- LOADER & TIME HELPERS ---
+    function showLoader() { document.getElementById('loader').style.display = 'flex'; }
+    function hideLoader() { document.getElementById('loader').style.display = 'none'; }
+    
     function getISTDate() {
         const now = new Date();
         const istOffset = 5.5 * 60 * 60 * 1000;
@@ -675,6 +703,7 @@
     function initApp() {
         initTearOff();
         showSwitchPopup();
+        showLoader();
         auth.onAuthStateChanged(user => {
             if (user) {
                 currentUser = user;
@@ -682,6 +711,7 @@
                 fetchUserProfile();
             } else if (!isGuest) {
                 showAuthOverlay();
+                hideLoader();
             }
         });
     }
@@ -696,19 +726,25 @@
             avatarUrl: ''
         };
         hideAuthOverlay();
+        showLoader();
         loadEntries();
     }
 
     async function fetchUserProfile() {
-        const doc = await db.collection('users').doc(currentUser.uid).get();
-        if (doc.exists) {
-            userProfile = doc.data();
-            document.getElementById('settings-pfp').src = userProfile.avatarUrl || 'https://i.pinimg.com/736x/2e/0f/20/2e0f2095037d0563457a4128f7311756.jpg';
-            hideAuthOverlay();
-            loadEntries();
-        } else {
-            // This shouldn't happen if they signed up correctly
-            auth.signOut();
+        try {
+            const doc = await db.collection('users').doc(currentUser.uid).get();
+            if (doc.exists) {
+                userProfile = doc.data();
+                document.getElementById('settings-pfp').src = userProfile.avatarUrl || 'https://i.pinimg.com/originals/2e/0f/20/2e0f2095037d0563457a4128f7311756.jpg';
+                hideAuthOverlay();
+                await loadEntries();
+            } else {
+                auth.signOut(); // User exists in auth but not in DB, force logout
+            }
+        } catch(err) {
+            console.error(err);
+            alert("Could not fetch user profile.");
+            hideLoader();
         }
     }
 
@@ -743,10 +779,15 @@
         const username = document.getElementById('auth-username').value;
 
         if (!email || !password) { alert("Please fill in all fields"); return; }
-
+        
+        showLoader();
         try {
             if (authMode === 'signup') {
-                if (!username) { alert("Please enter a username"); return; }
+                if (!username) { 
+                    alert("Please enter a username"); 
+                    hideLoader();
+                    return; 
+                }
                 const userCredential = await auth.createUserWithEmailAndPassword(email, password);
                 const user = userCredential.user;
                 
@@ -758,32 +799,40 @@
                 };
                 
                 await db.collection('users').doc(user.uid).set(profile);
-                userProfile = profile;
+                // onAuthStateChanged will handle hiding the loader after profile is fetched
             } else {
                 await auth.signInWithEmailAndPassword(email, password);
+                // onAuthStateChanged will handle hiding the loader
             }
         } catch (error) {
             alert(error.message);
+            hideLoader();
         }
     }
 
-    function handleLogout() {
-        auth.signOut().then(() => {
+    async function handleLogout() {
+        showLoader();
+        try {
+            await auth.signOut();
             window.location.reload();
-        });
+        } catch(err) {
+            alert("Could not log out.");
+            hideLoader();
+        }
     }
 
-    // --- ENTRANCE ---
+    // --- DATA HANDLING ---
     async function loadEntries() {
-        if (!userProfile) return;
+        if (!userProfile) {
+            hideLoader();
+            return;
+        }
 
         const istNow = getISTDate();
         const today = istNow.getDate();
         const isEvenDay = today % 2 === 0;
 
         let displayRole;
-        // If we are currently in a manual toggle state, we might want to respect that, 
-        // but the "Twist" says it's automatic. Let's make it automatic based on IST.
         if (userProfile.role === 'taki') {
             displayRole = isEvenDay ? 'taki' : 'mitsuha';
         } else {
@@ -795,32 +844,38 @@
 
         if (isGuest) {
             const localData = JSON.parse(localStorage.getItem('guest_entries')) || [];
-            // Filter entries to show the entries of the "other" role if it's the wrong day
             entries = localData.filter(e => e.author_role === displayRole);
             renderEntries();
             renderCalendar();
+            hideLoader();
             return;
         }
-
+        
         try {
+            // This query requires a composite index in Firestore. 
+            // If you see a "failed-precondition" error in the browser console,
+            // it will contain a link to create the index in your Firebase project.
             const snapshot = await db.collection('entries')
                 .where('author_role', '==', displayRole)
                 .orderBy('timestamp', 'desc')
                 .get();
 
             entries = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-            renderEntries();
-            renderCalendar();
         } catch (error) {
             console.error("Error loading entries:", error);
-            // Fallback if no index exists yet
+            if (error.code === 'failed-precondition') {
+                console.warn("QUERY REQUIRES INDEX: A composite index is needed for this query to work efficiently. Please create it in your Firebase console. The link to create it should be in the error message in your browser's developer console.");
+            }
+            // Fallback for when index is missing - less efficient
             const snapshot = await db.collection('entries')
                 .where('author_role', '==', displayRole)
                 .get();
             entries = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }))
                 .sort((a,b) => (b.timestamp?.seconds || 0) - (a.timestamp?.seconds || 0));
+        } finally {
             renderEntries();
             renderCalendar();
+            hideLoader();
         }
     }
 
@@ -929,13 +984,15 @@
         document.getElementById('hidden-camera-input').click();
     }
 
-    async function handleFileSelect(input) {
+    function handleFileSelect(input) {
         if (input.files && input.files[0]) {
             const file = input.files[0];
+            currentImageFile = file; // Store the file object
+
+            // Use FileReader to show a preview
             const reader = new FileReader();
-            reader.onload = async function(e) {
-                currentImage = e.target.result;
-                document.getElementById('preview-img-tag').src = currentImage;
+            reader.onload = function(e) {
+                document.getElementById('preview-img-tag').src = e.target.result;
                 document.getElementById('editor-img-preview').style.display = 'flex';
                 switchTab('diary');
             };
@@ -944,7 +1001,7 @@
     }
 
     function clearImage() {
-        currentImage = null;
+        currentImageFile = null;
         document.getElementById('editor-img-preview').style.display = 'none';
         document.getElementById('hidden-camera-input').value = '';
     }
@@ -955,51 +1012,70 @@
         const content = document.getElementById('new-content').value;
         if(!title || !content) { alert("Please write something!"); return; }
 
+        showLoader();
+
         const now = new Date();
         const days = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
         const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
         
-        const newEntry = {
-            author_uid: currentUser.uid,
-            author_role: userProfile.role,
-            date: String(now.getDate()),
-            day: days[now.getDay()],
-            time: `${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`,
-            month: months[now.getMonth()],
-            title: title,
-            preview: content.substring(0, 50) + "...",
-            full: content,
-            weather: currentMood,
-            image: currentImage,
-            timestamp: Date.now() // Use simple timestamp for guest
-        };
-
-        if (isGuest) {
-            const localData = JSON.parse(localStorage.getItem('guest_entries')) || [];
-            newEntry.id = 'guest_' + Date.now();
-            localData.unshift(newEntry);
-            localStorage.setItem('guest_entries', JSON.stringify(localData));
-            
-            document.getElementById('new-title').value = '';
-            document.getElementById('new-content').value = '';
-            clearImage();
-            switchTab('entries');
-            loadEntries();
-            return;
-        }
+        let imageUrl = null;
 
         try {
-            newEntry.timestamp = firebase.firestore.FieldValue.serverTimestamp();
-            await db.collection('entries').add(newEntry);
+            if (currentImageFile) {
+                if (isGuest) {
+                    // For guests, convert to base64
+                    imageUrl = await toBase64(currentImageFile);
+                } else {
+                    // For logged-in users, upload to Firebase Storage
+                    const filePath = `diary_images/${currentUser.uid}/${Date.now()}_${currentImageFile.name}`;
+                    const fileRef = storage.ref(filePath);
+                    await fileRef.put(currentImageFile);
+                    imageUrl = await fileRef.getDownloadURL();
+                }
+            }
+
+            const newEntry = {
+                author_uid: currentUser.uid,
+                author_role: userProfile.role,
+                date: String(now.getDate()),
+                day: days[now.getDay()],
+                time: `${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`,
+                month: months[now.getMonth()],
+                title: title,
+                preview: content.substring(0, 50) + "...",
+                full: content,
+                weather: currentMood,
+                image: imageUrl, // This is now a URL or base64
+                timestamp: isGuest ? Date.now() : firebase.firestore.FieldValue.serverTimestamp()
+            };
+
+            if (isGuest) {
+                const localData = JSON.parse(localStorage.getItem('guest_entries')) || [];
+                newEntry.id = 'guest_' + Date.now();
+                localData.unshift(newEntry);
+                localStorage.setItem('guest_entries', JSON.stringify(localData));
+            } else {
+                await db.collection('entries').add(newEntry);
+            }
+            
+            // Reset editor and refresh
             document.getElementById('new-title').value = '';
             document.getElementById('new-content').value = '';
             clearImage();
             switchTab('entries');
-            loadEntries();
+            await loadEntries();
         } catch (error) {
             alert("Error saving entry: " + error.message);
+            hideLoader();
         }
     }
+
+    const toBase64 = file => new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.readAsDataURL(file);
+        reader.onload = () => resolve(reader.result);
+        reader.onerror = error => reject(error);
+    });
 
     // --- MODAL & DELETE ---
     function openModal(idx) { 
@@ -1044,21 +1120,32 @@
         }
 
         if(confirm("Delete this entry?")) {
+            showLoader();
             if (isGuest) {
                 let localData = JSON.parse(localStorage.getItem('guest_entries')) || [];
                 localData = localData.filter(e => e.id !== entry.id);
                 localStorage.setItem('guest_entries', JSON.stringify(localData));
                 closeModal();
-                loadEntries();
+                await loadEntries();
                 return;
             }
 
             try {
+                // Also delete image from storage if it exists
+                if (entry.image) {
+                    try {
+                        const imageRef = storage.refFromURL(entry.image);
+                        await imageRef.delete();
+                    } catch (storageError) {
+                        console.error("Could not delete image from storage, it might not exist.", storageError);
+                    }
+                }
                 await db.collection('entries').doc(entry.id).delete();
                 closeModal();
-                loadEntries();
+                await loadEntries();
             } catch (error) {
                 alert("Error deleting entry: " + error.message);
+                hideLoader();
             }
         }
     }
@@ -1076,72 +1163,35 @@
     }
 
     async function handlePfpSelect(input) {
-        if(input.files && input.files[0]) {
+        if (input.files && input.files[0]) {
             const file = input.files[0];
-            const reader = new FileReader();
-            reader.onload = async function(e) {
-                const base64 = e.target.result;
-                document.getElementById('settings-pfp').src = base64;
-                // Update profile in Firestore
-                await db.collection('users').doc(currentUser.uid).update({ avatarUrl: base64 });
-            };
-            reader.readAsDataURL(file);
+            showLoader();
+            try {
+                if (isGuest) {
+                    // For guests, just show preview
+                    const base64 = await toBase64(file);
+                    document.getElementById('settings-pfp').src = base64;
+                    hideLoader();
+                    return;
+                }
+                
+                // Upload for logged-in users
+                const filePath = `avatars/${currentUser.uid}/${file.name}`;
+                const fileRef = storage.ref(filePath);
+                await fileRef.put(file);
+                const avatarUrl = await fileRef.getDownloadURL();
+
+                await db.collection('users').doc(currentUser.uid).update({ avatarUrl });
+                document.getElementById('settings-pfp').src = avatarUrl;
+                hideLoader();
+            } catch (error) {
+                alert("Error uploading profile picture.");
+                hideLoader();
+            }
         }
     }
 
     // --- THEME ---
-    async function switchBody() {
-        const app = document.getElementById('app-container');
-        app.classList.add('swapping');
-        
-        // Manual override for role display
-        isMitsuha = !isMitsuha;
-        const targetRole = isMitsuha ? 'mitsuha' : 'taki';
-        
-        setTimeout(async () => {
-            updateTheme();
-            
-            // Reload entries for the manually selected role
-            if (isGuest) {
-                const localData = JSON.parse(localStorage.getItem('guest_entries')) || [];
-                entries = localData.filter(e => e.author_role === targetRole);
-            } else {
-                const snapshot = await db.collection('entries')
-                    .where('author_role', '==', targetRole)
-                    .orderBy('timestamp', 'desc')
-                    .get();
-                entries = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-            }
-            
-            renderEntries();
-            renderCalendar();
-            app.classList.remove('swapping');
-        }, 300);
-    }
-
-    function toggleThemeManual() {
-        isMitsuha = !isMitsuha;
-        updateTheme();
-        // Also trigger reload for settings change
-        const targetRole = isMitsuha ? 'mitsuha' : 'taki';
-        loadManualRole(targetRole);
-    }
-
-    async function loadManualRole(role) {
-        if (isGuest) {
-            const localData = JSON.parse(localStorage.getItem('guest_entries')) || [];
-            entries = localData.filter(e => e.author_role === role);
-        } else {
-            const snapshot = await db.collection('entries')
-                .where('author_role', '==', role)
-                .orderBy('timestamp', 'desc')
-                .get();
-            entries = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-        }
-        renderEntries();
-        renderCalendar();
-    }
-
     function updateTheme() {
         const root = document.documentElement;
         const label = document.getElementById('theme-label');
