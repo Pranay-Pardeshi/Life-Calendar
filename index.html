@@ -93,11 +93,25 @@
         .auth-btn {
             width: 100%; padding: 15px; border-radius: 12px; border: none;
             background: var(--theme-color); color: white; font-weight: 700; font-size: 16px;
-            cursor: pointer;
+            cursor: pointer; touch-action: manipulation; transition: 0.2s;
         }
+        .auth-btn:active { transform: scale(0.97); }
         .auth-btn-group { display: flex; gap: 10px; margin-top: 10px; width: 100%; }
         .auth-btn.secondary { background: #8e8e93; }
-        .guest-btn { margin-top: 20px; color: var(--theme-color); cursor: pointer; font-size: 14px; text-decoration: underline; }
+        .guest-btn { margin-top: 20px; color: var(--theme-color); cursor: pointer; font-size: 15px; font-weight: 500; text-decoration: underline; touch-action: manipulation; }
+
+        .role-selector { display: flex; gap: 10px; margin: 20px 0; width: 100%; }
+        .role-btn {
+            flex: 1; padding: 14px; border: 2px solid var(--border-color); border-radius: 12px;
+            cursor: pointer; font-weight: 700; color: var(--text-sub); transition: 0.3s;
+            background: #fff; display: flex; justify-content: center; align-items: center; gap: 8px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.05); touch-action: manipulation;
+        }
+        .role-btn.active {
+            border-color: var(--theme-color); color: #fff; background: var(--theme-color);
+            transform: translateY(-2px); box-shadow: 0 6px 15px rgba(93, 140, 174, 0.3);
+        }
+        [data-theme="mitsuha"] .role-btn.active { box-shadow: 0 6px 15px rgba(255, 107, 107, 0.3); }
 
         /* --- UI COMPONENTS --- */
         .status-bar {
@@ -200,10 +214,14 @@
                 <input type="email" id="auth-email" class="auth-input" placeholder="Email">
                 <input type="password" id="auth-pass" class="auth-input" placeholder="Password">
                 
-                <div style="font-size:12px; color:var(--text-sub); margin-bottom:10px;">Role Selection</div>
+                <div style="font-size:12px; color:var(--text-sub); margin-bottom:10px; font-weight:700; letter-spacing:1px;">CHOOSE YOUR ROLE</div>
                 <div class="role-selector">
-                    <div class="role-btn active" id="btn-taki" onclick="setRole('Taki')">Taki</div>
-                    <div class="role-btn" id="btn-mitsuha" onclick="setRole('Mitsuha')">Mitsuha</div>
+                    <div class="role-btn active" id="btn-taki" onclick="setRole('Taki')">
+                        <i class="fas fa-mars"></i> TAKI
+                    </div>
+                    <div class="role-btn" id="btn-mitsuha" onclick="setRole('Mitsuha')">
+                        <i class="fas fa-venus"></i> MITSUHA
+                    </div>
                 </div>
 
                 <div class="auth-btn-group">
@@ -402,7 +420,7 @@
         const fileInput = document.getElementById('entry-img-input');
         const file = fileInput.files[0];
         
-        showPopup("Saving...", "Weaving your memory into the timeline...");
+        showPopup("Saving...", "Connecting timeline..."); // Show saving popup
 
         const ist = getIST();
         const entryData = {
@@ -440,6 +458,7 @@
         entryImageData = null;
         switchTab('entries');
         showPopup("Saved", "The memory has been woven into Musubi.");
+        setTimeout(closePopup, 3000); // Auto-close after 3 seconds
     }
 
     // --- THEME & DATA ---
