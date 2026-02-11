@@ -28,10 +28,10 @@
             --bg-app: #FFFFFF;
             --border-color: rgba(0,0,0,0.1);
             --bottom-bar: #5D8CAE;
-            --sky-bg: url('Taki.png');
+            --sky-bg: url('https://i.postimg.cc/jwDLn8Rf/Taki.png');
             --paper-bg: #fff;
             --input-bg: #fff;
-            --anime-wallpaper: url('Taki.png');
+            --anime-wallpaper: url('https://i.postimg.cc/jwDLn8Rf/Taki.png');
         }
 
         [data-theme="mitsuha"] {
@@ -40,8 +40,8 @@
             --theme-light: #FFF0F0;
             --text-date: #FF6B6B;
             --bottom-bar: #FF6B6B;
-            --sky-bg: url('mitsuha.png');
-            --anime-wallpaper: url('mitsuha.png');
+            --sky-bg: url('https://i.postimg.cc/BXHPCw2S/mitsuha.png');
+            --anime-wallpaper: url('https://i.postimg.cc/BXHPCw2S/mitsuha.png');
         }
 
         [data-dark="true"] {
@@ -509,7 +509,7 @@
             <div class="segment" onclick="switchTab('calendar')">Calendar</div>
             <div class="segment" onclick="switchTab('diary')">Diary</div>
         </div>
-        <div class="app-title" onclick="switchBody()">Diary</div>
+        <div class="app-title">Diary</div>
     </header>
 
     <!-- VIEW 1: ENTRIES -->
@@ -603,10 +603,6 @@
             </div>
             <!-- Settings List -->
             <div class="settings-list">
-                <div class="settings-item" onclick="toggleThemeManual()">
-                    <span>Theme</span>
-                    <span id="theme-label" style="color:var(--theme-color); font-weight:bold;">Taki (Blue)</span>
-                </div>
                 <div class="settings-item" onclick="toggleDarkMode()">
                     <span>Dark Mode</span>
                     <i class="fas fa-moon" id="dark-mode-icon"></i>
