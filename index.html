@@ -8,7 +8,599 @@
     <!-- PWA -->
     <link rel="manifest" href="/manifest.json">
     <meta name="theme-color" content="#5D8CAE">
-    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes"><!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>My Diary - Your Name</title>
+    
+    <!-- Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- Firebase (Compat Mode for simplicity) -->
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+
+    <style>
+        :root {
+            /* TAKI THEME (Default) */
+            --theme-color: #5D8CAE; 
+            --theme-light: #EAF4F9;
+            --text-main: #444444;
+            --text-date: #5D8CAE;
+            --text-sub: #666666;
+            --bg-body: #F2F2F2;
+            --bg-app: #FFFFFF;
+            --border-color: rgba(0,0,0,0.1);
+            --bottom-bar: #5D8CAE;
+            --sky-bg: url('Taki.png'); /* Local Asset */
+            --paper-bg: #fff;
+            --input-bg: #fff;
+            --ios-blue: #007AFF;
+        }
+
+        [data-theme="mitsuha"] {
+            /* MITSUHA THEME */
+            --theme-color: #FF6B6B;
+            --theme-light: #FFF0F0;
+            --text-date: #FF6B6B;
+            --bottom-bar: #FF6B6B;
+            --sky-bg: url('mitsuha.png'); /* Local Asset */
+        }
+
+        [data-dark="true"] {
+            --bg-body: #000000;
+            --bg-app: #1C1C1E;
+            --text-main: #FFFFFF;
+            --text-sub: #A1A1A1;
+            --border-color: rgba(255,255,255,0.15);
+            --paper-bg: #2C2C2E;
+            --input-bg: #2C2C2E;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+        body {
+            font-family: "Roboto", sans-serif;
+            background-color: var(--bg-body);
+            height: 100dvh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            overflow: hidden;
+            transition: background-color 0.3s;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        /* DESKTOP EMULATOR BACKGROUND */
+        .desktop-bg {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: var(--sky-bg);
+            background-size: cover; background-position: center;
+            filter: blur(20px) brightness(0.7);
+            z-index: -1;
+            display: none;
+        }
+        @media (min-width: 768px) { .desktop-bg { display: block; } }
+
+        #app-container {
+            width: 100%; max-width: 450px; background-color: var(--bg-app);
+            height: 100%; position: relative; display: flex; flex-direction: column;
+            box-shadow: 0 0 50px rgba(0,0,0,0.3);
+            transition: all 0.3s;
+            overflow: hidden;
+        }
+        @media (min-width: 768px) {
+            #app-container { height: 90vh; border-radius: 40px; border: 8px solid #333; }
+        }
+
+        /* --- ENTRANCE --- */
+        #tear-off-overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.9); z-index: 9999;
+            backdrop-filter: blur(10px);
+            display: flex; align-items: center; justify-content: center;
+        }
+        .calendar-paper {
+            width: 280px; height: 380px; background: #fff; position: relative;
+            box-shadow: 0 20px 50px rgba(0,0,0,0.5); display: flex; flex-direction: column;
+            text-align: center; transform-origin: top center; cursor: pointer; border-radius: 4px;
+        }
+        .torn-off { animation: tearFall 0.8s forwards; pointer-events: none; }
+        @keyframes tearFall {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(20deg) translateY(120vh); opacity: 0; }
+        }
+
+        /* --- AUTH SCREEN --- */
+        #auth-overlay {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background: var(--bg-app); z-index: 8000;
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            padding: 40px; transition: opacity 0.5s;
+        }
+        .auth-card {
+            width: 100%; max-width: 320px;
+            text-align: center;
+        }
+        .auth-logo { font-size: 2.5rem; color: var(--theme-color); font-weight: 700; margin-bottom: 30px; }
+        .auth-input {
+            width: 100%; padding: 15px; margin-bottom: 15px;
+            border: 1px solid var(--border-color); border-radius: 12px;
+            background: var(--input-bg); color: var(--text-main); font-size: 16px;
+        }
+        .auth-btn {
+            width: 100%; padding: 15px; border-radius: 12px; border: none;
+            background: var(--theme-color); color: white; font-weight: 700; font-size: 16px;
+            cursor: pointer; margin-top: 10px;
+        }
+        .google-btn {
+            width: 100%; padding: 12px; border-radius: 12px; border: 1px solid var(--border-color);
+            background: white; color: #444; font-weight: 500; display: flex; align-items: center;
+            justify-content: center; gap: 10px; margin-top: 20px; cursor: pointer;
+        }
+        .role-selector {
+            display: flex; gap: 10px; margin: 20px 0;
+        }
+        .role-btn {
+            flex: 1; padding: 10px; border: 2px solid var(--border-color); border-radius: 10px;
+            cursor: pointer; font-weight: 600; color: var(--text-sub);
+        }
+        .role-btn.active { border-color: var(--theme-color); color: var(--theme-color); background: var(--theme-light); }
+
+        /* --- POPUPS (iOS Style) --- */
+        .ios-popup {
+            position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%) scale(0.8);
+            background: rgba(255,255,255,0.9); backdrop-filter: blur(20px);
+            padding: 25px; border-radius: 20px; text-align: center;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.2); z-index: 10000;
+            width: 280px; opacity: 0; pointer-events: none; transition: 0.3s cubic-bezier(0.17, 0.89, 0.32, 1.28);
+        }
+        .ios-popup.show { opacity: 1; transform: translate(-50%, -50%) scale(1); pointer-events: auto; }
+        .ios-popup h3 { margin-bottom: 10px; color: #000; }
+        .ios-popup p { font-size: 14px; color: #444; line-height: 1.4; }
+        .ios-popup .popup-btn {
+            margin-top: 20px; padding: 10px; width: 100%; border-top: 1px solid rgba(0,0,0,0.1);
+            color: var(--ios-blue); font-weight: 600; cursor: pointer;
+        }
+
+        /* --- MAIN UI --- */
+        .status-bar {
+            height: 44px; display: flex; justify-content: space-between; align-items: center;
+            padding: 0 20px; font-size: 13px; color: var(--text-main); font-weight: 600;
+            padding-top: env(safe-area-inset-top);
+        }
+
+        header { padding: 10px 15px 15px 15px; border-bottom: 1px solid var(--border-color); }
+        .segmented-control {
+            display: flex; border: 1.5px solid var(--theme-color); border-radius: 8px;
+            overflow: hidden; height: 36px;
+        }
+        .segment {
+            flex: 1; display: flex; align-items: center; justify-content: center;
+            font-size: 14px; color: var(--theme-color); cursor: pointer; font-weight: 500;
+        }
+        .segment.active { background: var(--theme-color); color: #fff; }
+        
+        .app-title {
+            text-align: center; color: var(--theme-color); font-size: 19px;
+            font-weight: 500; margin-top: 10px;
+        }
+
+        .view-section { flex: 1; overflow-y: auto; display: none; -webkit-overflow-scrolling: touch; }
+        .view-section.active { display: block; }
+
+        /* ENTRIES VIEW */
+        #view-entries.active { background-image: var(--sky-bg); background-size: cover; background-position: center; }
+        .entry-item {
+            display: flex; padding: 15px 18px; background: rgba(255, 255, 255, 0.85);
+            backdrop-filter: blur(10px); border-bottom: 1px solid rgba(0,0,0,0.05);
+            margin-bottom: 1px; transition: 0.2s;
+        }
+        .date-col { width: 55px; display: flex; flex-direction: column; align-items: center; margin-right: 18px; border-right: 1px solid rgba(0,0,0,0.1); }
+        .date-num { font-size: 38px; color: var(--text-date); font-weight: 300; }
+        .date-day { font-size: 11px; color: var(--text-sub); text-transform: uppercase; }
+        .content-col { flex: 1; min-width: 0; }
+        .entry-title { font-size: 17px; font-weight: 700; color: var(--text-main); }
+        .entry-excerpt { font-size: 13px; color: var(--text-sub); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+        /* BOTTOM BAR */
+        .bottom-bar {
+            min-height: 60px; background: var(--bottom-bar); display: flex;
+            justify-content: space-around; align-items: center;
+            padding-bottom: max(15px, env(safe-area-inset-bottom));
+        }
+        .bar-icon { color: rgba(255,255,255,0.7); font-size: 22px; cursor: pointer; }
+        .bar-icon.active { color: #fff; }
+
+        /* DIARY EDITOR */
+        #view-diary { padding: 25px; display: flex; flex-direction: column; }
+        .editor-textarea { flex: 1; width: 100%; border: 1px solid var(--border-color); border-radius: 12px; padding: 15px; font-size: 17px; resize: none; margin: 15px 0; background: var(--input-bg); color: var(--text-main); }
+
+        /* MODAL */
+        .modal-overlay {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.5); z-index: 9000; display: none;
+            justify-content: center; align-items: flex-end; backdrop-filter: blur(5px);
+        }
+        .paper-sheet {
+            width: 100%; height: 90%; background: var(--paper-bg); border-top-left-radius: 25px; border-top-right-radius: 25px;
+            display: flex; flex-direction: column; animation: slideUp 0.3s ease-out;
+        }
+        @keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
+
+        .swapping { animation: glitch 0.4s infinite; }
+        @keyframes glitch { 0% { transform: translate(0); } 25% { transform: translate(-2px, 2px); } 50% { transform: translate(2px, -2px); } 100% { transform: translate(0); } }
+    </style>
+</head>
+<body>
+
+<div class="desktop-bg"></div>
+
+<!-- TEAR-OFF CALENDAR -->
+<div id="tear-off-overlay">
+    <div class="calendar-paper" onclick="tearPage(this)">
+        <div style="background:var(--theme-color); color:#fff; padding:20px; font-size:1.5rem; font-weight:700;" id="tear-month">FEBRUARY</div>
+        <div style="flex:1; display:flex; flex-direction:column; justify-content:center;">
+            <div style="font-size:8rem; font-weight:700; color:#333; line-height:1;" id="tear-date">11</div>
+            <div style="font-size:1.5rem; color:#888;" id="tear-day">Wednesday</div>
+        </div>
+        <div style="padding:20px; color:#aaa; font-size:0.9rem;">Tap to start</div>
+    </div>
+</div>
+
+<!-- IOS POPUP -->
+<div id="ios-popup" class="ios-popup">
+    <h3 id="popup-title">Notification</h3>
+    <p id="popup-msg">Message goes here.</p>
+    <div class="popup-btn" onclick="closePopup()">OK</div>
+</div>
+
+<div id="app-container">
+    
+    <!-- AUTH OVERLAY -->
+    <div id="auth-overlay">
+        <div class="auth-card">
+            <div class="auth-logo">My Diary</div>
+            <div id="auth-form">
+                <input type="text" id="auth-user" class="auth-input" placeholder="Username">
+                <input type="email" id="auth-email" class="auth-input" placeholder="Email">
+                <input type="password" id="auth-pass" class="auth-input" placeholder="Password">
+                
+                <div style="font-size:12px; color:var(--text-sub); margin-bottom:10px;">Who are you?</div>
+                <div class="role-selector">
+                    <div class="role-btn active" id="btn-taki" onclick="setRole('Taki')">Taki</div>
+                    <div class="role-btn" id="btn-mitsuha" onclick="setRole('Mitsuha')">Mitsuha</div>
+                </div>
+
+                <button class="auth-btn" onclick="handleAuth()">Sign Up / Login</button>
+                
+                <div style="margin:20px 0; color:var(--text-sub); font-size:14px;">OR</div>
+                
+                <button class="google-btn" onclick="googleSignIn()">
+                    <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/action/google.svg" width="18">
+                    Sign in with Google
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MAIN APP -->
+    <div class="status-bar">
+        <span id="status-date">Feb 11</span>
+        <span id="status-clock">12:00</span>
+        <span id="swap-timer" style="color:var(--theme-color); font-size:10px;">Swapping in...</span>
+    </div>
+
+    <header>
+        <div class="segmented-control">
+            <div class="segment active" onclick="switchTab('entries')">Entries</div>
+            <div class="segment" onclick="switchTab('calendar')">Calendar</div>
+            <div class="segment" onclick="switchTab('diary')">Diary</div>
+        </div>
+        <div class="app-title">My Diary</div>
+    </header>
+
+    <div class="view-section active" id="view-entries">
+        <div id="entry-list"></div>
+    </div>
+
+    <div class="view-section" id="view-calendar" style="padding:20px;">
+        <div style="text-align:center; font-size:24px; color:var(--theme-color); margin-bottom:20px;" id="cal-month">February 2026</div>
+        <div id="calendar-grid" style="display:grid; grid-template-columns:repeat(7, 1fr); gap:10px; text-align:center;"></div>
+    </div>
+
+    <div class="view-section" id="view-diary">
+        <input type="text" id="entry-title" class="auth-input" style="border-radius:8px;" placeholder="Title">
+        <textarea id="entry-content" class="editor-textarea" placeholder="What happened today?"></textarea>
+        <button class="auth-btn" onclick="saveEntry()">Save to Diary</button>
+    </div>
+
+    <div class="bottom-bar">
+        <i class="fas fa-list bar-icon active" onclick="switchTab('entries')"></i>
+        <i class="fas fa-calendar-alt bar-icon" onclick="switchTab('calendar')"></i>
+        <i class="fas fa-pen-nib bar-icon" onclick="switchTab('diary')"></i>
+        <i class="fas fa-sign-out-alt bar-icon" onclick="logout()"></i>
+    </div>
+</div>
+
+<script>
+    // --- FIREBASE CONFIG ---
+    // PASTE YOUR CONFIG HERE
+    const firebaseConfig = {
+      apiKey: "AIzaSyD40csyp5CtEHzwzv6QXCsjwKZXCf7guls",
+      authDomain: "jarvis-website-sign-in-feature.firebaseapp.com",
+      projectId: "jarvis-website-sign-in-feature",
+      storageBucket: "jarvis-website-sign-in-feature.firebasestorage.app",
+      messagingSenderId: "88057670607",
+      appId: "1:88057670607:web:8a4448a53451cde24dc0ba",
+      measurementId: "G-V04D48SN7P"
+    };
+
+    firebase.initializeApp(firebaseConfig);
+    const auth = firebase.auth();
+    const db = firebase.firestore();
+
+    // --- APP STATE ---
+    let currentUser = null;
+    let selectedRole = 'Taki'; // Role for signup
+    let currentViewRole = 'Taki'; // Role currently displayed (changes on swap)
+    let partnerUid = null;
+
+    // --- IST TIME HELPERS ---
+    function getIST() {
+        const now = new Date();
+        const istOffset = 5.5 * 60 * 60 * 1000;
+        return new Date(now.getTime() + istOffset);
+    }
+
+    function checkSwap() {
+        const ist = getIST();
+        const day = ist.getUTCDate();
+        
+        // LOGIC: Even Day -> Own Role | Odd Day -> Partner Role
+        const isEven = (day % 2 === 0);
+        
+        if (currentUser) {
+            const myRole = currentUser.role;
+            if (isEven) {
+                currentViewRole = myRole;
+            } else {
+                currentViewRole = (myRole === 'Taki' ? 'Mitsuha' : 'Taki');
+            }
+            updateTheme();
+            loadEntries();
+        }
+    }
+
+    function updateTheme() {
+        const root = document.documentElement;
+        if (currentViewRole === 'Mitsuha') {
+            root.setAttribute('data-theme', 'mitsuha');
+        } else {
+            root.removeAttribute('data-theme');
+        }
+    }
+
+    // --- UI LOGIC ---
+    function tearPage(el) {
+        el.classList.add('torn-off');
+        setTimeout(() => {
+            document.getElementById('tear-off-overlay').style.display = 'none';
+            showSwapTime();
+        }, 800);
+    }
+
+    function showSwapTime() {
+        const ist = getIST();
+        const nextMidnight = new Date(ist);
+        nextMidnight.setUTCHours(24, 0, 0, 0);
+        const diff = nextMidnight - ist;
+        
+        const hours = Math.floor(diff / (1000 * 60 * 60));
+        const mins = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+        
+        showPopup("Profile Switching", `Timeline intersection shifts in ${hours}h ${mins}m. Enjoy the current reality.`);
+    }
+
+    function showPopup(title, msg) {
+        document.getElementById('popup-title').innerText = title;
+        document.getElementById('popup-msg').innerText = msg;
+        document.getElementById('ios-popup').classList.add('show');
+    }
+
+    function closePopup() {
+        document.getElementById('ios-popup').classList.remove('show');
+    }
+
+    function setRole(role) {
+        selectedRole = role;
+        document.getElementById('btn-taki').classList.toggle('active', role === 'Taki');
+        document.getElementById('btn-mitsuha').classList.toggle('active', role === 'Mitsuha');
+    }
+
+    // --- AUTH ---
+    auth.onAuthStateChanged(user => {
+        if (user) {
+            db.collection('users').doc(user.uid).get().then(doc => {
+                if (doc.exists) {
+                    currentUser = doc.data();
+                    currentUser.uid = user.uid;
+                    document.getElementById('auth-overlay').style.opacity = '0';
+                    setTimeout(() => document.getElementById('auth-overlay').style.display = 'none', 500);
+                    checkSwap();
+                    findPartner();
+                } else {
+                    // Handle case where user is in Auth but not Firestore
+                    document.getElementById('auth-overlay').style.display = 'flex';
+                }
+            });
+        } else {
+            document.getElementById('auth-overlay').style.display = 'flex';
+            document.getElementById('auth-overlay').style.opacity = '1';
+        }
+    });
+
+    function handleAuth() {
+        const email = document.getElementById('auth-email').value;
+        const pass = document.getElementById('auth-pass').value;
+        const user = document.getElementById('auth-user').value;
+
+        auth.signInWithEmailAndPassword(email, pass).catch(err => {
+            if (err.code === 'auth/user-not-found') {
+                auth.createUserWithEmailAndPassword(email, pass).then(cred => {
+                    db.collection('users').doc(cred.user.uid).set({
+                        username: user,
+                        email: email,
+                        role: selectedRole,
+                        uid: cred.user.uid
+                    });
+                });
+            } else {
+                alert(err.message);
+            }
+        });
+    }
+
+    function googleSignIn() {
+        const provider = new firebase.auth.GoogleAuthProvider();
+        auth.signInWithPopup(provider).then(cred => {
+            db.collection('users').doc(cred.user.uid).get().then(doc => {
+                if (!doc.exists) {
+                    db.collection('users').doc(cred.user.uid).set({
+                        username: cred.user.displayName,
+                        email: cred.user.email,
+                        role: selectedRole,
+                        uid: cred.user.uid
+                    });
+                }
+                showPopup("Success", "Signed in successfully!");
+            });
+        });
+    }
+
+    function logout() { auth.signOut(); }
+
+    // --- DATA ---
+    function findPartner() {
+        const partnerRole = (currentUser.role === 'Taki' ? 'Mitsuha' : 'Taki');
+        db.collection('users').where('role', '==', partnerRole).limit(1).get().then(snap => {
+            if (!snap.empty) partnerUid = snap.docs[0].id;
+        });
+    }
+
+    function saveEntry() {
+        const title = document.getElementById('entry-title').value;
+        const content = document.getElementById('entry-content').value;
+        if (!title || !content) return;
+
+        const ist = getIST();
+        db.collection('entries').add({
+            author_uid: currentUser.uid,
+            role: currentUser.role,
+            title: title,
+            content: content,
+            timestamp: ist.getTime(),
+            dateStr: ist.toDateString(),
+            day: ist.getUTCDate(),
+            month: ist.toLocaleString('default', { month: 'short' }),
+            year: ist.getUTCFullYear()
+        }).then(() => {
+            document.getElementById('entry-title').value = '';
+            document.getElementById('entry-content').value = '';
+            switchTab('entries');
+            showPopup("Saved", "Entry recorded in your timeline.");
+        });
+    }
+
+    function loadEntries() {
+        const list = document.getElementById('entry-list');
+        list.innerHTML = '<div style="padding:20px; text-align:center; color:#fff;">Intersecting timelines...</div>';
+
+        // Fetch entries for the role currently being viewed
+        db.collection('entries').where('role', '==', currentViewRole)
+            .orderBy('timestamp', 'desc').limit(20)
+            .onSnapshot(snap => {
+                list.innerHTML = '';
+                snap.forEach(doc => {
+                    const data = doc.data();
+                    const html = `
+                        <div class="entry-item">
+                            <div class="date-col">
+                                <span class="date-num">${data.day}</span>
+                                <span class="date-day">${data.month}</span>
+                            </div>
+                            <div class="content-col">
+                                <div style="display:flex; justify-content:space-between; margin-bottom:5px;">
+                                    <span style="font-size:12px; color:var(--theme-color); font-weight:600;">${data.dateStr}</span>
+                                    <i class="fas fa-sun" style="color:var(--text-sub);"></i>
+                                </div>
+                                <div class="entry-title">${data.title}</div>
+                                <div class="entry-excerpt">${data.content}</div>
+                            </div>
+                        </div>
+                    `;
+                    list.innerHTML += html;
+                });
+                if (snap.empty) list.innerHTML = '<div style="padding:40px; text-align:center; color:#fff;">No entries found in this reality yet.</div>';
+            });
+    }
+
+    // --- NAVIGATION ---
+    function switchTab(name) {
+        document.querySelectorAll('.view-section').forEach(v => v.classList.remove('active'));
+        document.getElementById(`view-${name}`).classList.add('active');
+        
+        document.querySelectorAll('.segment').forEach(s => s.classList.remove('active'));
+        const segments = document.querySelectorAll('.segment');
+        if (name === 'entries') segments[0].classList.add('active');
+        if (name === 'calendar') segments[1].classList.add('active');
+        if (name === 'diary') segments[2].classList.add('active');
+
+        document.querySelectorAll('.bar-icon').forEach(i => i.classList.remove('active'));
+        const icons = document.querySelectorAll('.bar-icon');
+        if (name === 'entries') icons[0].classList.add('active');
+        if (name === 'calendar') icons[1].classList.add('active');
+        if (name === 'diary') icons[2].classList.add('active');
+    }
+
+    // --- CLOCK & TIMER ---
+    setInterval(() => {
+        const ist = getIST();
+        document.getElementById('status-clock').innerText = 
+            ist.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: false });
+        
+        const nextMidnight = new Date(ist);
+        nextMidnight.setUTCHours(24, 0, 0, 0);
+        const diff = nextMidnight - ist;
+        const h = Math.floor(diff / 3600000);
+        const m = Math.floor((diff % 3600000) / 60000);
+        const s = Math.floor((diff % 60000) / 1000);
+        document.getElementById('swap-timer').innerText = `Swap in ${h}h ${m}m ${s}s`;
+        
+        if (h === 0 && m === 0 && s === 0) {
+            const app = document.getElementById('app-container');
+            app.classList.add('swapping');
+            setTimeout(() => {
+                checkSwap();
+                app.classList.remove('swapping');
+            }, 1000);
+        }
+    }, 1000);
+
+    // --- INIT ---
+    const today = getIST();
+    document.getElementById('tear-date').innerText = today.getDate();
+    document.getElementById('tear-month').innerText = today.toLocaleString('default', { month: 'long' }).toUpperCase();
+    document.getElementById('tear-day').innerText = today.toLocaleString('default', { weekday: 'long' });
+    document.getElementById('status-date').innerText = today.toLocaleString('default', { month: 'short', day: 'numeric' });
+
+</script>
+</body>
+</html>
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 
     <!-- Styles -->
@@ -244,3 +836,4 @@
 
 </body>
 </html>
+
