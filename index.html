@@ -171,15 +171,7 @@
 
         /* ENTRIES VIEW */
         #view-entries.active { background: var(--sky-bg) center/cover no-repeat; }
-        .entry-list { padding-bottom: 20px; width: 100%; transition: transform 0.2s ease-out; }
-        
-        /* PULL TO REFRESH */
-        #pull-refresh {
-            height: 0; overflow: hidden; display: flex; align-items: center; justify-content: center;
-            background: rgba(255,255,255,0.2); backdrop-filter: blur(5px); transition: height 0.2s;
-        }
-        #pull-refresh.active { height: 60px; }
-
+        .entry-list { padding-bottom: 20px; width: 100%; }
         .entry-item {
             display: flex; flex-direction: column; padding: 15px 18px; background: rgba(255, 255, 255, 0.85);
             backdrop-filter: blur(10px); border-bottom: 1px solid rgba(0,0,0,0.05);
@@ -197,6 +189,8 @@
         .entry-excerpt { font-size: 13px; color: var(--text-sub); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
         .entry-img-attached { width: 100%; height: auto; max-height: 250px; object-fit: cover; border-radius: 12px; margin-top: 12px; opacity: 0; transition: opacity 0.5s; }
         .entry-img-attached.loaded { opacity: 1; }
+        
+        .entry-meta { display: flex; gap: 10px; font-size: 10px; color: var(--theme-color); margin-top: 5px; font-weight: 600; }
 
         /* CALENDAR */
         .cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 8px; text-align: center; width: 100%; }
@@ -209,7 +203,6 @@
             content: ''; position: absolute; bottom: 4px; width: 4px; height: 4px;
             background: var(--theme-color); border-radius: 50%;
         }
-        
         .cal-cell.is-today { 
             background: var(--theme-color); color: #fff !important; font-weight: 700;
             box-shadow: 0 4px 10px rgba(0,0,0,0.1);
@@ -218,14 +211,26 @@
             background: transparent; border: 2.5px solid var(--theme-color); color: var(--theme-color) !important;
         }
 
+        /* DIARY EDITOR */
+        .option-btn {
+            background: var(--bg-body); border: 1px solid var(--border-color); border-radius: 8px; padding: 8px 12px;
+            font-size: 14px; color: var(--text-sub); cursor: pointer; transition: 0.2s; display: flex; align-items: center; gap: 5px;
+        }
+        .option-btn.selected { background: var(--theme-color); color: #fff; border-color: var(--theme-color); }
+        .option-btn.recording { background: #FF3B30; color: #fff; animation: pulse 1s infinite; }
+        @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.5; } 100% { opacity: 1; } }
+
+        /* GALLERY VIEW */
+        #view-gallery { background: var(--bg-body); padding: 10px; }
+        .gallery-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 5px; }
+        .gallery-item { aspect-ratio: 1; background: #ddd; border-radius: 4px; overflow: hidden; cursor: pointer; }
+        .gallery-item img { width: 100%; height: 100%; object-fit: cover; }
+
         /* SETTINGS */
         #view-settings { padding: 30px; }
-        .settings-section { margin-bottom: 25px; }
-        .settings-title { font-size: 12px; color: var(--theme-color); font-weight: 700; margin-bottom: 10px; text-transform: uppercase; letter-spacing: 1px; }
         .pfp-container { width: 100px; height: 100px; border-radius: 50%; margin: 0 auto 15px; border: 3px solid var(--theme-color); overflow: hidden; cursor: pointer; position: relative; }
         .pfp-container img { width: 100%; height: 100%; object-fit: cover; }
         .settings-item { display: flex; justify-content: space-between; align-items: center; padding: 15px 0; border-bottom: 1px solid var(--border-color); color: var(--text-main); }
-        .code-box { background: var(--bg-body); padding: 15px; border-radius: 12px; font-family: monospace; font-size: 18px; text-align: center; letter-spacing: 2px; display: flex; align-items: center; justify-content: center; gap: 10px; margin-top: 10px; border: 1px solid var(--border-color); }
 
         /* BOTTOM BAR */
         .bottom-bar {
@@ -262,13 +267,25 @@
         .ios-popup.show { opacity: 1; transform: translate(-50%, -50%) scale(1); pointer-events: auto; }
         .popup-btn { margin-top: 20px; color: var(--ios-blue); font-weight: 600; cursor: pointer; border-top: 1px solid rgba(0,0,0,0.1); padding-top: 15px; }
 
-        .swapping { animation: glitch 0.4s infinite; }
-        @keyframes glitch {
-            0% { transform: translate(0); }
-            20% { transform: translate(-3px, 3px); }
-            40% { transform: translate(-3px, -3px); }
-            100% { transform: translate(0); }
+        /* PHOTO SOURCE MODAL */
+        .photo-source-modal {
+            position: fixed; bottom: 0; left: 0; width: 100%; background: var(--bg-app);
+            border-top-left-radius: 20px; border-top-right-radius: 20px; z-index: 9500;
+            padding: 20px; transform: translateY(100%); transition: transform 0.3s cubic-bezier(0.17, 0.89, 0.32, 1.28);
+            box-shadow: 0 -5px 20px rgba(0,0,0,0.1); display: flex; flex-direction: column; gap: 15px;
         }
+        .photo-source-modal.active { transform: translateY(0); }
+        .source-btn {
+            width: 100%; padding: 15px; background: var(--bg-body); border: 1px solid var(--border-color);
+            border-radius: 12px; font-size: 16px; font-weight: 500; color: var(--text-main); cursor: pointer;
+            display: flex; align-items: center; gap: 15px; justify-content: center;
+        }
+        .source-btn:active { background: var(--theme-light); }
+        .source-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 9400; display: none; }
+        .source-overlay.active { display: block; }
+
+        .audio-player-container { margin-top: 15px; padding: 10px; background: var(--theme-light); border-radius: 10px; display: flex; align-items: center; gap: 10px; }
+        .audio-play-btn { color: var(--theme-color); font-size: 20px; cursor: pointer; }
     </style>
 </head>
 <body>
@@ -300,13 +317,11 @@
                 <input type="text" id="auth-user" class="auth-input" placeholder="Username (for Sign Up)">
                 <input type="email" id="auth-email" class="auth-input" placeholder="Email">
                 <input type="password" id="auth-pass" class="auth-input" placeholder="Password">
-                
-                <div style="font-size:11px; color:var(--text-sub); margin-bottom:10px; font-weight:700; letter-spacing:1px;">SELECT ROLE</div>
+                <div style="font-size:11px; color:var(--text-sub); margin-bottom:10px; font-weight:700;">SELECT ROLE</div>
                 <div class="role-selector">
                     <div class="role-btn active" id="btn-taki" onclick="setRole('taki')"><i class="fas fa-mars"></i> TAKI</div>
                     <div class="role-btn" id="btn-mitsuha" onclick="setRole('mitsuha')"><i class="fas fa-venus"></i> MITSUHA</div>
                 </div>
-
                 <div class="auth-btn-group">
                     <button class="auth-btn" id="login-btn" onclick="handleLogin()">LOGIN</button>
                     <button class="auth-btn secondary" onclick="handleSignUp()">SIGN UP</button>
@@ -332,82 +347,92 @@
         <div class="app-title" id="app-title-text">My Diary</div>
     </header>
 
-    <div class="view-section active" id="view-entries">
-        <div id="pull-refresh"><div class="spinner" style="width:20px; height:20px;"></div></div>
-        <div id="entry-list" class="entry-list"></div>
-    </div>
+    <div class="view-section active" id="view-entries"><div id="entry-list" class="entry-list"></div></div>
     
     <div class="view-section" id="view-calendar" style="padding:25px;">
         <div style="text-align:center; font-size:24px; color:var(--theme-color); margin-bottom:25px; font-weight:300;" id="cal-month">Month Year</div>
         <div id="calendar-grid" class="cal-grid"></div>
     </div>
 
+    <div class="view-section" id="view-gallery">
+        <div id="gallery-container" class="gallery-grid"></div>
+    </div>
+
     <div class="view-section" id="view-diary" style="padding:25px;">
-        <div style="display:flex; justify-content:space-between; margin-bottom:15px;">
+        <div style="display:flex; justify-content:space-between; margin-bottom:15px; flex-wrap:wrap; gap:10px;">
             <div style="display:flex; gap:8px;">
                 <button class="option-btn selected" onclick="setMood(this, 'sun')"><i class="fas fa-sun"></i></button>
                 <button class="option-btn" onclick="setMood(this, 'cloud')"><i class="fas fa-cloud"></i></button>
-                <button class="option-btn" onclick="setMood(this, 'cloud-rain')"><i class="fas fa-cloud-rain"></i></button>
+                <button class="option-btn" onclick="setMood(this, 'rain')"><i class="fas fa-cloud-rain"></i></button>
             </div>
-            <button class="option-btn" onclick="document.getElementById('entry-img-input').click()"><i class="fas fa-camera"></i> Photo</button>
+            <div style="display:flex; gap:8px;">
+                <button class="option-btn" id="voice-btn" onclick="toggleRecording()"><i class="fas fa-microphone"></i></button>
+                <button class="option-btn" onclick="openPhotoSourceModal()"><i class="fas fa-camera"></i> Photo</button>
+            </div>
         </div>
         <div id="img-preview-box" style="width:100%; height:180px; border-radius:12px; margin-bottom:15px; display:none; position:relative; overflow:hidden;">
             <img id="entry-img-preview" style="width:100%; height:100%; object-fit:cover;">
             <div onclick="clearEntryImg()" style="position:absolute; top:8px; right:8px; background:rgba(0,0,0,0.5); color:#fff; width:24px; height:24px; border-radius:50%; display:flex; align-items:center; justify-content:center; cursor:pointer;">&times;</div>
         </div>
-        <!-- capture="environment" for direct mobile camera access -->
-        <input type="file" id="entry-img-input" style="display:none;" accept="image/*" capture="environment" onchange="previewEntryImg(this)">
+        <div id="audio-preview-box" style="margin-bottom:15px; display:none;">
+            <div class="audio-player-container">
+                <i class="fas fa-play audio-play-btn" id="preview-audio-play"></i>
+                <span style="font-size:12px; color:var(--theme-color);">Voice Note Recorded</span>
+                <i class="fas fa-trash" style="margin-left:auto; color:#FF3B30; cursor:pointer;" onclick="clearAudio()"></i>
+            </div>
+        </div>
+        <div id="location-tag" style="margin-bottom:10px; font-size:11px; color:var(--theme-color); display:none;"><i class="fas fa-location-dot"></i> <span id="location-text">Fetching location...</span></div>
+        <input type="file" id="camera-input" style="display:none;" accept="image/*" capture="environment" onchange="previewEntryImg(this)">
+        <input type="file" id="gallery-input" style="display:none;" accept="image/*" onchange="previewEntryImg(this)">
         <input type="text" id="entry-title" class="auth-input" style="border-radius:8px;" placeholder="Title">
         <textarea id="entry-content" class="auth-input" style="flex:1; border-radius:12px; resize:none;" placeholder="What happened today?"></textarea>
         <button class="auth-btn" style="margin-top:15px; flex:none;" onclick="saveEntry()">SAVE TO TIMELINE</button>
     </div>
 
     <div class="view-section" id="view-settings">
-        <div class="settings-section" style="text-align:center;">
+        <div style="text-align:center; margin-bottom:30px;">
             <div class="pfp-container" onclick="document.getElementById('pfp-input').click()"><img id="user-pfp" src="https://cdn-icons-png.flaticon.com/512/149/149071.png"></div>
-            <h2 id="settings-username">Username</h2>
-            <p id="settings-email" style="color:var(--text-sub); font-size:14px; margin-bottom:10px;">email@example.com</p>
+            <h2 id="settings-username">Username</h2><p id="settings-email" style="color:var(--text-sub); font-size:14px;">email@example.com</p>
         </div>
         <input type="file" id="pfp-input" style="display:none;" accept="image/*" onchange="updatePfp(this)">
-
-        <div class="settings-section">
-            <h3 class="settings-title">Connection</h3>
-            <div id="connect-section">
-                <!-- Will be populated by JS -->
-            </div>
-        </div>
-
-        <div class="settings-section">
-            <h3 class="settings-title">Preferences</h3>
-            <div class="settings-item"><span>Dark Mode</span><input type="checkbox" id="dark-mode-toggle" onchange="toggleDarkMode(this.checked)"></div>
-            <div class="settings-item" onclick="logout()" style="color:#FF3B30; cursor:pointer;"><span>Log Out</span><i class="fas fa-sign-out-alt"></i></div>
-        </div>
+        <div class="settings-item"><span>Dark Mode</span><input type="checkbox" id="dark-mode-toggle" onchange="toggleDarkMode(this.checked)"></div>
+        <div class="settings-item"><span>Background Music</span><input type="checkbox" id="music-toggle" onchange="toggleMusic(this.checked)"></div>
+        <div class="settings-item" onclick="logout()" style="color:#FF3B30; cursor:pointer;"><span>Log Out</span><i class="fas fa-sign-out-alt"></i></div>
     </div>
 
     <div class="bottom-bar">
         <i class="fas fa-list bar-icon active" id="tab-entries" onclick="switchTab('entries')"></i>
         <i class="fas fa-calendar-alt bar-icon" id="tab-calendar" onclick="switchTab('calendar')"></i>
+        <i class="fas fa-images bar-icon" id="tab-gallery" onclick="switchTab('gallery')"></i>
         <i class="fas fa-pen bar-icon" id="tab-diary" onclick="switchTab('diary')"></i>
         <i class="fas fa-gear bar-icon" id="tab-settings" onclick="switchTab('settings')"></i>
     </div>
 </div>
 
+<div class="source-overlay" id="photo-overlay" onclick="closePhotoSourceModal()"></div>
+<div class="photo-source-modal" id="photo-modal">
+    <div style="text-align:center; font-weight:700; color:var(--text-sub); margin-bottom:5px;">ADD PHOTO</div>
+    <button class="source-btn" onclick="triggerInput('camera')"><i class="fas fa-camera"></i> Take Photo</button>
+    <button class="source-btn" onclick="triggerInput('gallery')"><i class="fas fa-image"></i> Choose from Gallery</button>
+    <button class="source-btn" onclick="closePhotoSourceModal()" style="color:#FF3B30;">Cancel</button>
+</div>
+
 <div class="modal-overlay" id="read-modal">
     <div class="paper-sheet">
-        <div class="sheet-header">
-            <button style="color:#FF3B30; border:none; background:none;" onclick="deleteCurrentEntry()"><i class="fas fa-trash"></i></button>
-            <span id="m-date">Date</span>
-            <button style="color:var(--theme-color); font-weight:700; border:none; background:none;" onclick="closeModal()">Done</button>
-        </div>
+        <div class="sheet-header"><button style="color:#FF3B30; border:none; background:none;" onclick="deleteCurrentEntry()"><i class="fas fa-trash"></i></button><span id="m-date">Date</span><button style="color:var(--theme-color); font-weight:700; border:none; background:none;" onclick="closeModal()">Done</button></div>
         <div class="sheet-body">
             <img id="m-img" style="width:100%; border-radius:12px; margin-bottom:20px; display:none;">
+            <div id="m-audio" style="display:none; margin-bottom:20px;"></div>
             <h2 id="m-title" style="margin-bottom:15px; color:var(--theme-color);">Title</h2>
+            <div id="m-location" style="font-size:11px; color:var(--text-sub); margin-bottom:10px; display:none;"></div>
             <div id="m-text" style="white-space:pre-wrap;">Content...</div>
         </div>
     </div>
 </div>
 
 <div id="ios-popup" class="ios-popup"><h3 id="popup-title">Notification</h3><p id="popup-msg"></p><div class="popup-btn" onclick="closePopup()">OK</div></div>
+
+<audio id="bg-music" loop src="https://www.chosic.com/wp-content/uploads/2021/07/Rainy-Day-Anime-Style.mp3"></audio>
 
 <script>
     const firebaseConfig = {
@@ -423,15 +448,56 @@
     firebase.initializeApp(firebaseConfig);
     const auth = firebase.auth();
     const db = firebase.firestore();
-    
-    // OFFLINE PERSISTENCE
-    db.enablePersistence().catch(err => console.error("Persistence failed:", err.code));
     auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL);
 
-    let currentUser = null, selectedRole = 'taki', currentViewRole = 'taki', entryImageData = null, currentMood = 'sun', currentEntries = [], openEntryId = null;
+    let currentUser = null, selectedRole = 'taki', currentViewRole = 'taki', entryImageData = null, entryAudioData = null, currentMood = 'sun', currentEntries = [], openEntryId = null, mediaRecorder, audioChunks = [], isRecording = false, currentLocation = null;
 
     function getIST() { return new Date(new Date().getTime() + (5.5 * 60 * 60 * 1000)); }
     function tearPage(el) { el.classList.add('torn-off'); setTimeout(() => document.getElementById('tear-off-overlay').style.display='none', 800); }
+
+    // --- PHOTO SOURCE LOGIC ---
+    function openPhotoSourceModal() { document.getElementById('photo-overlay').classList.add('active'); document.getElementById('photo-modal').classList.add('active'); }
+    function closePhotoSourceModal() { document.getElementById('photo-overlay').classList.remove('active'); document.getElementById('photo-modal').classList.remove('active'); }
+    function triggerInput(type) { closePhotoSourceModal(); if(type === 'camera') document.getElementById('camera-input').click(); else document.getElementById('gallery-input').click(); }
+
+    // --- AUDIO LOGIC ---
+    async function toggleRecording() {
+        if (!isRecording) {
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                mediaRecorder = new MediaRecorder(stream, { mimeType: 'audio/webm;codecs=opus', audioBitsPerSecond: 64000 });
+                audioChunks = [];
+                mediaRecorder.ondataavailable = e => audioChunks.push(e.data);
+                mediaRecorder.onstop = () => {
+                    const blob = new Blob(audioChunks, { type: 'audio/webm' });
+                    const r = new FileReader(); r.onloadend = () => { entryAudioData = r.result; document.getElementById('audio-preview-box').style.display = 'block'; };
+                    r.readAsDataURL(blob);
+                    stream.getTracks().forEach(t => t.stop());
+                };
+                mediaRecorder.start(); isRecording = true;
+                document.getElementById('voice-btn').classList.add('recording');
+            } catch (err) { alert("Microphone access denied."); }
+        } else {
+            mediaRecorder.stop(); isRecording = false;
+            document.getElementById('voice-btn').classList.remove('recording');
+        }
+    }
+    function clearAudio() { entryAudioData = null; document.getElementById('audio-preview-box').style.display = 'none'; }
+
+    // --- LOCATION LOGIC ---
+    function fetchLocation() {
+        if (navigator.geolocation) {
+            document.getElementById('location-tag').style.display = 'block';
+            navigator.geolocation.getCurrentPosition(pos => {
+                const { latitude, longitude } = pos.coords;
+                fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}`)
+                    .then(r => r.json()).then(data => {
+                        currentLocation = data.display_name.split(',')[0] + ", " + data.display_name.split(',')[1];
+                        document.getElementById('location-text').innerText = currentLocation;
+                    });
+            }, () => document.getElementById('location-tag').style.display = 'none');
+        }
+    }
 
     // --- AUTH ---
     function handleLogin() {
@@ -440,13 +506,11 @@
         b.innerText = "LOGGING IN..."; b.disabled = true;
         auth.signInWithEmailAndPassword(e, p).catch(err => { alert(err.message); b.innerText = "LOGIN"; b.disabled = false; });
     }
-
     function handleSignUp() {
         const e = document.getElementById('auth-email').value, p = document.getElementById('auth-pass').value, u = document.getElementById('auth-user').value;
         if(!e || !p || !u) return alert("Fill all fields");
-        auth.createUserWithEmailAndPassword(e, p).then(cred => db.collection('users').doc(cred.user.uid).set({ username: u, email: e, role: selectedRole, uid: cred.user.uid, coupleId: null })).catch(err => alert(err.message));
+        auth.createUserWithEmailAndPassword(e, p).then(cred => db.collection('users').doc(cred.user.uid).set({ username: u, email: e, role: selectedRole, uid: cred.user.uid })).catch(err => alert(err.message));
     }
-
     function guestSignIn() { if(window.location.protocol === 'file:') return alert("Guest Mode requires a server"); auth.signInAnonymously().catch(err => alert(err.message)); }
 
     auth.onAuthStateChanged(user => {
@@ -458,9 +522,9 @@
                         currentUser = doc.data(); currentUser.uid = user.uid;
                         if(currentUser.role) currentUser.role = currentUser.role.toLowerCase();
                         l.style.display = 'none'; a.style.display = 'none';
-                        checkSwap(); renderCalendar();
+                        checkSwap(); renderCalendar(); fetchLocation();
                     } else if (user.isAnonymous) {
-                        db.collection('users').doc(user.uid).set({ username: "Guest Voyager", role: selectedRole, uid: user.uid, isGuest: true, coupleId: null }).then(() => fetchProfile());
+                        db.collection('users').doc(user.uid).set({ username: "Guest Voyager", role: selectedRole, uid: user.uid, isGuest: true }).then(() => fetchProfile());
                     } else if (retry < 15) setTimeout(() => fetchProfile(retry + 1), 1000);
                     else { l.style.display = 'none'; a.style.display = 'flex'; }
                 });
@@ -469,128 +533,41 @@
         } else { l.style.display = 'none'; a.style.display = 'flex'; a.style.opacity = '1'; }
     });
 
-    // --- PAIRING SYSTEM ---
-    function generateInviteCode() {
-        const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
-        let code = '';
-        for (let i = 0; i < 6; i++) code += chars.charAt(Math.floor(Math.random() * chars.length));
-        
-        db.collection('users').doc(currentUser.uid).update({ coupleId: code }).then(() => {
-            currentUser.coupleId = code;
-            renderConnectionUI();
-            showPopup("Code Generated", "Share this code with your partner.");
-        });
-    }
-
-    function connectPartner() {
-        const code = document.getElementById('partner-code-input').value.trim().toUpperCase();
-        if (code.length !== 6) return alert("Enter a valid 6-character code.");
-        
-        db.collection('users').doc(currentUser.uid).update({ coupleId: code }).then(() => {
-            currentUser.coupleId = code;
-            renderConnectionUI();
-            showPopup("Connected!", "Timeline synchronized.");
-            loadEntries();
-        }).catch(err => alert(err.message));
-    }
-
-    function renderConnectionUI() {
-        const container = document.getElementById('connect-section');
-        if (!currentUser.coupleId) {
-            container.innerHTML = `
-                <p style="font-size:14px; color:var(--text-sub); margin-bottom:15px;">Connect with your partner to share diaries.</p>
-                <button class="auth-btn" style="margin-bottom:15px; flex:none;" onclick="generateInviteCode()">INVITE PARTNER</button>
-                <div style="display:flex; gap:10px;">
-                    <input type="text" id="partner-code-input" class="auth-input" placeholder="Partner's Code" style="margin-bottom:0;">
-                    <button class="auth-btn secondary" style="width:auto; flex:none; padding:0 20px;" onclick="connectPartner()">JOIN</button>
-                </div>
-            `;
-        } else {
-            container.innerHTML = `
-                <p style="font-size:12px; color:var(--text-sub);">Your Connection ID:</p>
-                <div class="code-box">
-                    <span>${currentUser.coupleId}</span>
-                    <i class="far fa-copy" onclick="copyCode('${currentUser.coupleId}')" style="cursor:pointer; color:var(--theme-color);"></i>
-                </div>
-                <p style="font-size:11px; color:var(--theme-color); margin-top:10px; text-align:center;">Timeline Intersection Active</p>
-            `;
-        }
-    }
-
-    function copyCode(code) {
-        navigator.clipboard.writeText(code).then(() => showPopup("Copied", "Code copied to clipboard."));
-    }
-
-    // --- DIARY LOGIC ---
+    // --- LOGIC ---
     function saveEntry() {
-        if (!currentUser.coupleId) return alert("Please connect with your partner in Settings first.");
         const t = document.getElementById('entry-title').value, c = document.getElementById('entry-content').value;
         if (!t || !c) return alert("Title/Content required");
-        
         showPopup("Saving...", "Connecting timeline...");
         const ist = getIST();
-        db.collection('entries').add({ 
-            author_uid: currentUser.uid, 
-            coupleId: currentUser.coupleId,
-            role: currentUser.role.toLowerCase(), 
-            title: t, content: c, image: entryImageData || null, mood: currentMood, timestamp: ist.getTime(), day: ist.getUTCDate(), month: ist.toLocaleString('default', { month: 'short' }) 
-        }).then(() => {
+        db.collection('entries').add({ author_uid: currentUser.uid, role: currentUser.role.toLowerCase(), title: t, content: c, image: entryImageData || null, audio: entryAudioData || null, mood: currentMood, location: currentLocation, timestamp: ist.getTime(), day: ist.getUTCDate(), month: ist.toLocaleString('default', { month: 'short' }) }).then(() => {
             document.getElementById('entry-title').value = ''; document.getElementById('entry-content').value = '';
-            document.getElementById('img-preview-box').style.display = 'none'; entryImageData = null;
+            document.getElementById('img-preview-box').style.display = 'none'; entryImageData = null; clearAudio();
             switchTab('entries'); showPopup("Saved", "The memory has been woven into Musubi."); setTimeout(closePopup, 2000);
         }).catch(err => { alert(err.message); closePopup(); });
     }
 
     function loadEntries() {
         const list = document.getElementById('entry-list');
-        if (!currentUser || !currentUser.coupleId) {
-            list.innerHTML = '<div style="padding:40px; text-align:center; color:#fff;"><i class="fas fa-link" style="font-size:2rem; display:block; margin-bottom:15px; opacity:0.7;"></i>Connect with your partner in Settings to see the shared timeline.</div>';
-            return;
-        }
-
         list.innerHTML = '<p style="text-align:center; padding:20px; color:#fff;">Calling memories...</p>';
-        db.collection('entries')
-            .where('coupleId', '==', currentUser.coupleId)
-            .where('role', '==', currentViewRole.toLowerCase())
-            .orderBy('timestamp', 'desc').limit(20).onSnapshot(snap => {
-                list.innerHTML = ''; currentEntries = [];
-                snap.forEach(doc => {
-                    const data = doc.data(); data.id = doc.id; currentEntries.push(data);
-                    list.innerHTML += `<div class="entry-item" onclick="openEntry('${doc.id}')"><div class="entry-row"><div class="date-col"><span class="date-num">${data.day}</span><span class="date-day">${data.month}</span></div><div class="content-col"><div class="entry-title">${data.title}</div><div class="entry-excerpt">${data.content}</div></div></div>${data.image ? `<img src="${data.image}" class="entry-img-attached" onload="this.classList.add('loaded')">` : ''}</div>`;
-                });
-                if(snap.empty) list.innerHTML = '<p style="text-align:center; padding:40px; color:#fff;">No memories in this timeline yet.</p>';
+        db.collection('entries').where('role', '==', currentViewRole.toLowerCase()).orderBy('timestamp', 'desc').limit(20).onSnapshot(snap => {
+            list.innerHTML = ''; currentEntries = [];
+            snap.forEach(doc => {
+                const data = doc.data(); data.id = doc.id; currentEntries.push(data);
+                const hasImg = data.image ? '<i class="fas fa-image" style="margin-right:5px;"></i>' : '';
+                const hasAudio = data.audio ? '<i class="fas fa-volume-up" style="margin-right:5px;"></i>' : '';
+                list.innerHTML += `<div class="entry-item" onclick="openEntry('${doc.id}')"><div class="entry-row"><div class="date-col"><span class="date-num">${data.day}</span><span class="date-day">${data.month}</span></div><div class="content-col"><div class="entry-meta">${hasImg} ${hasAudio} <i class="fas fa-${data.mood || 'sun'}"></i></div><div class="entry-title">${data.title}</div><div class="entry-excerpt">${data.content}</div></div></div></div>`;
             });
+            if(snap.empty) list.innerHTML = '<p style="text-align:center; padding:40px; color:#fff;">No memories yet.</p>';
+        });
     }
 
-    // --- PULL TO REFRESH ---
-    let touchStart = 0;
-    const entriesView = document.getElementById('view-entries');
-    entriesView.addEventListener('touchstart', e => { touchStart = e.touches[0].pageY; });
-    entriesView.addEventListener('touchmove', e => {
-        const touchDiff = e.touches[0].pageY - touchStart;
-        if (entriesView.scrollTop === 0 && touchDiff > 0) {
-            document.getElementById('pull-refresh').style.height = Math.min(touchDiff, 60) + 'px';
-        }
-    });
-    entriesView.addEventListener('touchend', e => {
-        if (parseInt(document.getElementById('pull-refresh').style.height) >= 60) {
-            loadEntries();
-            renderCalendar();
-        }
-        document.getElementById('pull-refresh').style.height = '0px';
-    });
-
-    // --- CALENDAR ---
     function renderCalendar() {
         const grid = document.getElementById('calendar-grid'), ist = getIST(), year = ist.getUTCFullYear(), month = ist.getUTCMonth();
         document.getElementById('cal-month').innerText = ist.toLocaleString('default', { month: 'long', year: 'numeric' });
         grid.innerHTML = '';
         ['S','M','T','W','T','F','S'].forEach(d => grid.innerHTML += `<div style="font-weight:700; color:var(--text-sub); font-size:12px;">${d}</div>`);
         for(let i=0; i<new Date(year, month, 1).getDay(); i++) grid.innerHTML += '<div></div>';
-        
-        if (!currentUser || !currentUser.coupleId) return;
-
-        db.collection('entries').where('coupleId', '==', currentUser.coupleId).where('role', '==', currentViewRole.toLowerCase()).get().then(snap => {
+        db.collection('entries').where('role', '==', currentViewRole.toLowerCase()).get().then(snap => {
             const days = snap.docs.map(doc => doc.data().day);
             for(let d=1; d<=new Date(year, month + 1, 0).getDate(); d++) {
                 grid.innerHTML += `<div class="cal-cell ${days.includes(d)?'has-entry':''} ${d===ist.getUTCDate()?'is-today':''}">${d}</div>`;
@@ -598,20 +575,28 @@
         });
     }
 
-    // --- UI HELPERS ---
+    function loadGallery() {
+        const grid = document.getElementById('gallery-container'); grid.innerHTML = '';
+        db.collection('entries').where('role', '==', currentViewRole.toLowerCase()).orderBy('timestamp', 'desc').get().then(snap => {
+            snap.forEach(doc => {
+                const data = doc.data();
+                if(data.image) grid.innerHTML += `<div class="gallery-item" onclick="openEntry('${doc.id}')"><img src="${data.image}"></div>`;
+            });
+            if(grid.innerHTML === '') grid.innerHTML = '<p style="text-align:center; padding:20px; width:100%; color:var(--text-sub);">No photos in this timeline.</p>';
+        });
+    }
+
     function switchTab(name) {
         document.querySelectorAll('.view-section').forEach(v => { v.style.display = 'none'; v.classList.remove('active'); });
         const target = document.getElementById(`view-${name}`); target.style.display = 'flex'; target.classList.add('active');
         document.querySelectorAll('.bar-icon').forEach(i => i.classList.remove('active')); document.getElementById(`tab-${name}`).classList.add('active');
         const segIdx = {'entries':0, 'calendar':1, 'diary':2}[name];
         if(segIdx !== undefined) { document.querySelectorAll('.segment').forEach(s => s.classList.remove('active')); document.querySelectorAll('.segment')[segIdx].classList.add('active'); }
-        if(name === 'entries') loadEntries();
-        if(name === 'calendar') renderCalendar();
-        if(name === 'settings') {
+        if(name === 'entries') loadEntries(); if(name === 'calendar') renderCalendar(); if(name === 'gallery') loadGallery();
+        if(name === 'settings' && currentUser) {
             document.getElementById('settings-username').innerText = currentUser.username;
             document.getElementById('settings-email').innerText = currentUser.email;
             if(currentUser.pfp) document.getElementById('user-pfp').src = currentUser.pfp;
-            renderConnectionUI();
         }
     }
 
@@ -622,6 +607,8 @@
         if(old !== currentViewRole) { const app = document.getElementById('app-container'); app.classList.add('swapping'); setTimeout(() => app.classList.remove('swapping'), 1000); }
         document.documentElement.setAttribute('data-theme', currentViewRole === 'mitsuha' ? 'mitsuha' : '');
         document.getElementById('app-title-text').innerText = `${currentViewRole.charAt(0).toUpperCase() + currentViewRole.slice(1)}'s Diary`;
+        const tearMonth = document.getElementById('tear-month');
+        if(currentViewRole === 'mitsuha') tearMonth.style.background = '#FF6B6B'; else tearMonth.style.background = '#5D8CAE';
         loadEntries();
     }
 
@@ -630,8 +617,12 @@
         document.getElementById('m-title').innerText = e.title; document.getElementById('m-text').innerText = e.content;
         document.getElementById('m-date').innerText = `${e.month} ${e.day}`;
         const img = document.getElementById('m-img'); if(e.image) { img.src = e.image; img.style.display = 'block'; } else img.style.display = 'none';
+        const loc = document.getElementById('m-location'); if(e.location) { loc.innerText = e.location; loc.style.display = 'block'; } else loc.style.display = 'none';
+        const aud = document.getElementById('m-audio');
+        if(e.audio) { aud.innerHTML = `<div class="audio-player-container"><i class="fas fa-play audio-play-btn" onclick="playMemoryAudio('${e.audio}')"></i><span>Voice Note</span></div>`; aud.style.display = 'block'; } else aud.style.display = 'none';
         document.getElementById('read-modal').style.display = 'flex';
     }
+    function playMemoryAudio(src) { const a = new Audio(src); a.play(); }
     function closeModal() { document.getElementById('read-modal').style.display = 'none'; }
     function deleteCurrentEntry() { if(confirm("Delete this memory?") && openEntryId) { db.collection('entries').doc(openEntryId).delete().then(() => { closeModal(); showPopup("Deleted", "The thread has been cut."); }); } }
 
@@ -641,6 +632,7 @@
     function clearEntryImg() { entryImageData = null; document.getElementById('img-preview-box').style.display = 'none'; document.getElementById('entry-img-input').value = ''; }
     function updatePfp(i) { if (i.files && i.files[0]) { const r = new FileReader(); r.onload = e => { const b = e.target.result; document.getElementById('user-pfp').src = b; db.collection('users').doc(currentUser.uid).update({ pfp: b }); }; r.readAsDataURL(i.files[0]); } }
     function toggleDarkMode(d) { document.documentElement.setAttribute('data-dark', d); localStorage.setItem('diary-dark-mode', d); }
+    function toggleMusic(on) { const m = document.getElementById('bg-music'); if(on) m.play(); else m.pause(); }
     function logout() { auth.signOut().then(() => location.reload()); }
     function showPopup(t, m) { document.getElementById('popup-title').innerText = t; document.getElementById('popup-msg').innerText = m; document.getElementById('ios-popup').classList.add('show'); }
     function closePopup() { document.getElementById('ios-popup').classList.remove('show'); }
@@ -652,12 +644,6 @@
         document.getElementById('swap-timer').innerText = `Swap in ${h}h ${m}m ${s}s`;
         if(h === 0 && m === 0 && s === 0) checkSwap();
     }, 1000);
-
-    const ist = getIST();
-    document.getElementById('tear-date').innerText = ist.getUTCDate();
-    document.getElementById('tear-month').innerText = ist.toLocaleString('default', { month: 'long' }).toUpperCase();
-    document.getElementById('tear-day').innerText = ist.toLocaleString('default', { weekday: 'long' });
-    document.getElementById('status-date').innerText = ist.toLocaleString('default', { month: 'short', day: 'numeric' });
 
     if(localStorage.getItem('diary-dark-mode') === 'true') { document.documentElement.setAttribute('data-dark', 'true'); document.getElementById('dark-mode-toggle').checked = true; }
 </script>
