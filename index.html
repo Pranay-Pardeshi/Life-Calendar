@@ -13,7 +13,6 @@
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-storage-compat.js"></script>
 
     <style>
         :root {
@@ -330,7 +329,6 @@
     firebase.initializeApp(firebaseConfig);
     const auth = firebase.auth();
     const db = firebase.firestore();
-    const storage = firebase.storage();
 
     // --- APP STATE ---
     let currentUser = null;
@@ -367,6 +365,7 @@
 
         if(name === 'entries') loadEntries();
         if(name === 'settings') loadSettings();
+        if(name === 'calendar') renderCalendar();
     }
 
     // --- SETTINGS LOGIC ---
@@ -417,10 +416,7 @@
         const content = document.getElementById('entry-content').value;
         if (!title || !content) { alert("Please fill title and content"); return; }
         
-        const fileInput = document.getElementById('entry-img-input');
-        const file = fileInput.files[0];
-        
-        showPopup("Saving...", "Connecting timeline..."); // Show saving popup
+        showPopup("Saving...", "Connecting timeline...");
 
         const ist = getIST();
         const entryData = {
@@ -430,49 +426,64 @@
             content: content,
             timestamp: ist.getTime(),
             day: ist.getUTCDate(),
-            month: ist.toLocaleString('default', { month: 'short' })
+            month: ist.toLocaleString('default', { month: 'short' }),
+            image: entryImageData || null
         };
 
-        if (file) {
-            const storageRef = storage.ref(`diary_images/${currentUser.uid}/${Date.now()}_${file.name}`);
-            storageRef.put(file).then(snapshot => {
-                snapshot.ref.getDownloadURL().then(url => {
-                    entryData.image = url;
-                    db.collection('entries').add(entryData).then(onEntrySaved);
-                });
-            }).catch(err => {
-                alert("Image upload failed: " + err.message);
-                closePopup();
-            });
-        } else {
-            db.collection('entries').add(entryData).then(onEntrySaved);
-        }
+        db.collection('entries').add(entryData).then(() => {
+            document.getElementById('entry-title').value = '';
+            document.getElementById('entry-content').value = '';
+            document.getElementById('entry-img-preview').style.display = 'none';
+            document.getElementById('img-placeholder').style.display = 'block';
+            entryImageData = null;
+            switchTab('entries');
+            showPopup("Saved", "The memory has been woven into Musubi.");
+            setTimeout(closePopup, 3000);
+            renderCalendar();
+        }).catch(err => {
+            alert("Save failed: " + err.message);
+            closePopup();
+        });
     }
 
-    function onEntrySaved() {
-        document.getElementById('entry-title').value = '';
-        document.getElementById('entry-content').value = '';
-        document.getElementById('entry-img-preview').style.display = 'none';
-        document.getElementById('img-placeholder').style.display = 'block';
-        document.getElementById('entry-img-input').value = ''; // Clear file input
-        entryImageData = null;
-        switchTab('entries');
-        showPopup("Saved", "The memory has been woven into Musubi.");
-        setTimeout(closePopup, 3000); // Auto-close after 3 seconds
-    }
-
-    // --- THEME & DATA ---
-    function checkSwap() {
+    function renderCalendar() {
+        const grid = document.getElementById('calendar-grid');
+        const monthLabel = document.getElementById('cal-month');
         const ist = getIST();
-        const day = ist.getUTCDate();
-        const isEven = (day % 2 === 0);
+        const year = ist.getUTCFullYear();
+        const month = ist.getUTCMonth();
         
-        if (currentUser) {
-            currentViewRole = isEven ? currentUser.role : (currentUser.role === 'Taki' ? 'Mitsuha' : 'Taki');
-            document.documentElement.setAttribute('data-theme', currentViewRole === 'Mitsuha' ? 'mitsuha' : '');
-            document.getElementById('app-title-text').innerText = (currentViewRole === 'Taki' ? "Taki's Diary" : "Mitsuha's Diary");
-            loadEntries();
-        }
+        const firstDay = new Date(year, month, 1).getDay();
+        const daysInMonth = new Date(year, month + 1, 0).getDate();
+        
+        monthLabel.innerText = ist.toLocaleString('default', { month: 'long', year: 'numeric' });
+        grid.innerHTML = '';
+        
+        ['S','M','T','W','T','F','S'].forEach(d => {
+            grid.innerHTML += `<div style="font-weight:700; color:var(--text-sub); font-size:12px;">${d}</div>`;
+        });
+
+        for(let i=0; i<firstDay; i++) grid.innerHTML += '<div></div>';
+
+        db.collection('entries')
+            .where('role', '==', currentViewRole)
+            .get().then(snap => {
+                const entryDays = snap.docs.map(doc => doc.data().day);
+                
+                for(let d=1; d<=daysInMonth; d++) {
+                    const hasEntry = entryDays.includes(d);
+                    const isToday = (d === ist.getUTCDate());
+                    grid.innerHTML += `
+                        <div style="
+                            padding: 8px; 
+                            border-radius: 50%; 
+                            ${hasEntry ? 'background: var(--theme-light); color: var(--theme-color); font-weight:700;' : ''}
+                            ${isToday ? 'border: 2px solid var(--theme-color);' : ''}
+                            font-size: 14px;
+                        ">${d}</div>
+                    `;
+                }
+            });
     }
 
     function loadEntries() {
@@ -497,7 +508,7 @@
                                     <div class="entry-excerpt">${data.content}</div>
                                 </div>
                             </div>
-                            ${data.image ? `<img src="${data.image}" class="entry-img-attached img-lazy" onload="this.classList.add('loaded')">` : ''}
+                            ${data.image ? `<img src="${data.image}" class="entry-img-attached">` : ''}
                         </div>
                     `;
                     list.innerHTML += html;
@@ -514,8 +525,12 @@
                     currentUser = doc.data();
                     currentUser.uid = user.uid;
                     document.getElementById('auth-overlay').style.opacity = '0';
-                    setTimeout(() => document.getElementById('auth-overlay').style.display = 'none', 500);
+                    setTimeout(() => {
+                        document.getElementById('auth-overlay').style.display = 'none';
+                        showSwapTime();
+                    }, 500);
                     checkSwap();
+                    renderCalendar();
                 } else if (user.isAnonymous) {
                     db.collection('users').doc(user.uid).set({
                         username: "Guest Voyager",
@@ -534,13 +549,17 @@
     function handleLogin() {
         const email = document.getElementById('auth-email').value;
         const pass = document.getElementById('auth-pass').value;
-        auth.signInWithEmailAndPassword(email, pass).catch(err => alert(err.message));
+        if(!email || !pass) { alert("Please enter Email and Password"); return; }
+        auth.signInWithEmailAndPassword(email, pass).catch(err => {
+            alert("Login failed: " + err.message);
+        });
     }
 
     function handleSignUp() {
         const email = document.getElementById('auth-email').value;
         const pass = document.getElementById('auth-pass').value;
         const user = document.getElementById('auth-user').value;
+        if(!email || !pass || !user) { alert("Please fill all fields"); return; }
         auth.createUserWithEmailAndPassword(email, pass).then(cred => {
             db.collection('users').doc(cred.user.uid).set({
                 username: user, email: email, role: selectedRole, uid: cred.user.uid
@@ -549,7 +568,13 @@
     }
 
     function guestSignIn() {
-        auth.signInAnonymously().catch(err => alert(err.message));
+        auth.signInAnonymously().catch(err => {
+            if(window.location.protocol === 'file:') {
+                alert("Guest Mode requires a local server. Please use VS Code 'Live Server' or host on Vercel/GitHub.");
+            } else {
+                alert(err.message);
+            }
+        });
     }
 
     function logout() { auth.signOut().then(() => location.reload()); }
@@ -567,6 +592,16 @@
     }
     function closePopup() { document.getElementById('ios-popup').classList.remove('show'); }
 
+    function showSwapTime() {
+        const ist = getIST();
+        const nextMidnight = new Date(ist);
+        nextMidnight.setUTCHours(24, 0, 0, 0);
+        const diff = nextMidnight - ist;
+        const hours = Math.floor(diff / (1000 * 60 * 60));
+        const mins = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+        showPopup("Profile Switching", `Timeline intersection shifts in ${hours}h ${mins}m.`);
+    }
+
     // --- INIT ---
     setInterval(() => {
         const ist = getIST();
@@ -578,7 +613,7 @@
         const h = Math.floor(diff / 3600000);
         const m = Math.floor((diff % 3600000) / 60000);
         const s = Math.floor((diff % 60000) / 1000);
-        document.getElementById('swap-timer').innerText = `Swap in ${h}h ${m}m ${s}s`;
+        document.getElementById('swap-timer').innerText = `Swap in ${h}h ${m}s`;
     }, 1000);
 
     const ist = getIST();
