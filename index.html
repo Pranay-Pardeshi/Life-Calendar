@@ -465,10 +465,6 @@
                 <input type="text" id="lock-pin-input" class="auth-input" placeholder="Set 4-digit PIN" style="width:120px; margin:0; padding:8px;">
                 <button class="auth-btn" style="flex:none; padding:8px 15px;" onclick="setAppLock()">Set</button>
             </div>
-            <div class="settings-item">
-                <span>Push Notifications</span>
-                <button class="auth-btn" style="flex:none; padding:8px 15px;" onclick="requestNotifications()">Enable</button>
-            </div>
         </div>
 
         <div class="settings-section">
@@ -535,7 +531,7 @@
     db.enablePersistence().catch(() => {});
     auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL);
 
-    let currentUser = null, selectedRole = 'taki', currentViewRole = 'taki', entryImageData = null, entryAudioData = null, currentMood = 'sun', currentEntries = [], openEntryId = null, mediaRecorder, audioChunks = [], isRecording = false, currentLocation = null, currentPin = "", isGalleryMode = false;
+    let currentUser = null, selectedRole = 'taki', currentViewRole = 'taki', entryImageData = null, entryAudioData = null, currentMood = 'sun', currentEntries = [], openEntryId = null, mediaRecorder, audioChunks = [], isRecording = false, currentLocation = null, currentPin = "";
 
     function getIST() { return new Date(new Date().getTime() + (5.5 * 60 * 60 * 1000)); }
     function tearPage(el) { el.classList.add('torn-off'); setTimeout(() => document.getElementById('tear-off-overlay').style.display='none', 800); }
@@ -544,15 +540,33 @@
     function pressKey(key) {
         const pin = localStorage.getItem('app-pin');
         if (key === 'C') { currentPin = ""; }
-        else { currentPin += key; if (currentPin.length > 4) currentPin = key; }
+        else { 
+            currentPin += key; 
+            if (currentPin.length > 4) currentPin = key;
+        }
         updatePinDots();
         if (currentPin.length === 4) {
-            if (currentPin === pin) { document.getElementById('lock-screen').style.display = 'none'; currentPin = ""; }
-            else { document.getElementById('lock-msg').innerText = "Wrong PIN"; document.getElementById('lock-msg').style.color = "red"; setTimeout(() => { document.getElementById('lock-msg').innerText = "Enter Passcode"; document.getElementById('lock-msg').style.color = ""; }, 1000); currentPin = ""; updatePinDots(); }
+            if (currentPin === pin) {
+                document.getElementById('lock-screen').style.display = 'none';
+                currentPin = "";
+            } else {
+                document.getElementById('lock-msg').innerText = "Wrong PIN. Try Again.";
+                document.getElementById('lock-msg').style.color = "red";
+                setTimeout(() => { document.getElementById('lock-msg').innerText = "Enter Passcode"; document.getElementById('lock-msg').style.color = ""; }, 1000);
+                currentPin = ""; updatePinDots();
+            }
         }
     }
-    function updatePinDots() { const dots = document.getElementById('pin-dots').children; for (let i = 0; i < 4; i++) dots[i].classList.toggle('filled', i < currentPin.length); }
-    function setAppLock() { const pin = document.getElementById('lock-pin-input').value; if (pin.length !== 4 || isNaN(pin)) return alert("Enter a 4-digit PIN."); localStorage.setItem('app-pin', pin); showPopup("Lock Enabled", "PIN set successfully."); }
+    function updatePinDots() {
+        const dots = document.getElementById('pin-dots').children;
+        for (let i = 0; i < 4; i++) dots[i].classList.toggle('filled', i < currentPin.length);
+    }
+    function setAppLock() {
+        const pin = document.getElementById('lock-pin-input').value;
+        if (pin.length !== 4 || isNaN(pin)) return alert("Enter a 4-digit numeric PIN.");
+        localStorage.setItem('app-pin', pin);
+        showPopup("Lock Enabled", "App will now require this PIN to open.");
+    }
 
     // --- AUDIO & PHOTO ---
     async function toggleRecording() {
@@ -576,85 +590,37 @@
     }
     function openPhotoSourceModal() { document.getElementById('photo-overlay').classList.add('active'); document.getElementById('photo-modal').classList.add('active'); }
     function closePhotoSourceModal() { document.getElementById('photo-overlay').classList.remove('active'); document.getElementById('photo-modal').classList.remove('active'); }
-    
-    function triggerInput(type) {
-        closePhotoSourceModal();
-        isGalleryMode = (document.getElementById('view-gallery').style.display !== 'none');
-        if(type === 'camera') document.getElementById('camera-input').click();
-        else document.getElementById('gallery-input').click();
-    }
-
-    function previewEntryImg(i) {
-        if (i.files && i.files[0]) {
-            const r = new FileReader();
-            r.onload = e => {
-                entryImageData = e.target.result;
-                if (isGalleryMode) { saveEntry(); }
-                else {
-                    document.getElementById('entry-img-preview').src = entryImageData;
-                    document.getElementById('entry-img-preview').style.display = 'block';
-                    document.getElementById('img-preview-box').style.display = 'block';
-                }
-            };
-            r.readAsDataURL(i.files[0]);
-        }
-    }
-
-    // --- NOTIFICATIONS ---
-    function requestNotifications() { Notification.requestPermission().then(p => { if(p === 'granted') showPopup("Enabled", "Timeline alerts enabled."); }); }
+    function triggerInput(type) { closePhotoSourceModal(); if(type === 'camera') document.getElementById('camera-input').click(); else document.getElementById('gallery-input').click(); }
 
     // --- AUTH ---
     auth.onAuthStateChanged(user => {
         const l = document.getElementById('loading-screen'), a = document.getElementById('auth-overlay');
         const pin = localStorage.getItem('app-pin');
         if (user) {
-            const fetchProfile = (retry = 0) => {
-                db.collection('users').doc(user.uid).get().then(doc => {
-                    if (doc.exists) {
-                        currentUser = doc.data(); currentUser.uid = user.uid;
-                        if(currentUser.role) currentUser.role = currentUser.role.toLowerCase();
-                        l.style.display = 'none'; a.style.display = 'none';
-                        if (pin) document.getElementById('lock-screen').style.display = 'flex';
-                        checkSwap(); renderCalendar(); fetchLocation();
-                    } else if (user.isAnonymous) {
-                        db.collection('users').doc(user.uid).set({ username: "Guest Voyager", role: selectedRole, uid: user.uid, isGuest: true, coupleId: null }).then(() => fetchProfile());
-                    } else if (retry < 15) setTimeout(() => fetchProfile(retry + 1), 1000);
-                    else { l.style.display = 'none'; a.style.display = 'flex'; }
-                });
-            };
-            fetchProfile();
+            db.collection('users').doc(user.uid).get().then(doc => {
+                if (doc.exists) {
+                    currentUser = doc.data(); currentUser.uid = user.uid;
+                    l.style.display = 'none'; a.style.display = 'none';
+                    if (pin) document.getElementById('lock-screen').style.display = 'flex';
+                    checkSwap(); renderCalendar();
+                } else if (user.isAnonymous) {
+                    db.collection('users').doc(user.uid).set({ username: "Guest Voyager", role: selectedRole, uid: user.uid, isGuest: true, coupleId: null }).then(() => location.reload());
+                }
+            });
         } else { l.style.display = 'none'; a.style.display = 'flex'; a.style.opacity = '1'; }
     });
 
-    // --- LOGIC ---
+    // --- CORE LOGIC ---
     function saveEntry() {
-        if (!currentUser.coupleId) return alert("Connect with your partner first.");
+        if (!currentUser.coupleId) return alert("Connect with your partner in Settings first.");
         const t = document.getElementById('entry-title').value, c = document.getElementById('entry-content').value;
-        const isQuickGallery = isGalleryMode;
-        if (!t && !entryImageData) return alert("Add content or photo!");
-        
+        if (!t && !entryImageData) return alert("Add a title or a photo!");
         showPopup("Saving...", "Connecting timeline...");
         const ist = getIST();
-        db.collection('entries').add({ 
-            author_uid: currentUser.uid, 
-            coupleId: currentUser.coupleId, 
-            role: currentUser.role.toLowerCase(), 
-            title: t || (isQuickGallery ? "Photo Memory" : "Untitled"), 
-            content: c || "", 
-            image: entryImageData || null, 
-            audio: entryAudioData || null, 
-            mood: currentMood, 
-            location: currentLocation, 
-            timestamp: ist.getTime(), 
-            day: ist.getUTCDate(), 
-            month: ist.toLocaleString('default', { month: 'short' }),
-            isGalleryOnly: isQuickGallery
-        }).then(() => {
+        db.collection('entries').add({ author_uid: currentUser.uid, coupleId: currentUser.coupleId, role: currentUser.role.toLowerCase(), title: t || "Memory Photo", content: c || "", image: entryImageData || null, audio: entryAudioData || null, mood: currentMood, timestamp: ist.getTime(), day: ist.getUTCDate(), month: ist.toLocaleString('default', { month: 'short' }) }).then(() => {
             document.getElementById('entry-title').value = ''; document.getElementById('entry-content').value = '';
-            document.getElementById('img-preview-box').style.display = 'none'; entryImageData = null; clearAudio();
-            isGalleryMode = false;
-            switchTab(isQuickGallery ? 'gallery' : 'entries');
-            showPopup("Saved", "Memory woven into Musubi."); setTimeout(closePopup, 2000);
+            document.getElementById('img-preview-box').style.display = 'none'; entryImageData = null;
+            switchTab('entries'); showPopup("Saved", "Memory woven into Musubi."); setTimeout(closePopup, 2000);
         });
     }
 
@@ -668,21 +634,11 @@
         db.collection('entries').where('coupleId', '==', currentUser.coupleId).where('role', '==', currentViewRole.toLowerCase()).orderBy('timestamp', 'desc').limit(20).onSnapshot(snap => {
             list.innerHTML = ''; currentEntries = [];
             snap.forEach(doc => {
-                const data = doc.data(); data.id = doc.id;
-                if (!data.isGalleryOnly) {
-                    currentEntries.push(data);
-                    list.innerHTML += `<div class="entry-item" onclick="openEntry('${doc.id}')"><div class="entry-row"><div class="date-col"><span class="date-num">${data.day}</span><span class="date-day">${data.month}</span></div><div class="content-col"><div class="entry-meta">${data.image ? '<i class="fas fa-image"></i>' : ''} ${data.audio ? '<i class="fas fa-volume-up"></i>' : ''} <i class="fas fa-${data.mood || 'sun'}"></i></div><div class="entry-title">${data.title}</div><div class="entry-excerpt">${data.content}</div></div></div></div>`;
-                }
+                const data = doc.data(); data.id = doc.id; currentEntries.push(data);
+                list.innerHTML += `<div class="entry-item" onclick="openEntry('${doc.id}')"><div class="entry-row"><div class="date-col"><span class="date-num">${data.day}</span><span class="date-day">${data.month}</span></div><div class="content-col"><div class="entry-meta">${data.image ? '<i class="fas fa-image"></i>' : ''} ${data.audio ? '<i class="fas fa-volume-up"></i>' : ''} <i class="fas fa-${data.mood || 'sun'}"></i></div><div class="entry-title">${data.title}</div><div class="entry-excerpt">${data.content}</div></div></div></div>`;
             });
-            if(list.innerHTML === '') list.innerHTML = '<p style="text-align:center; padding:40px; color:#fff;">No diary entries yet.</p>';
         });
     }
-
-    // PULL REFRESH
-    let ts = 0; const ev = document.getElementById('view-entries');
-    ev.addEventListener('touchstart', e => ts = e.touches[0].pageY);
-    ev.addEventListener('touchmove', e => { let d = e.touches[0].pageY - ts; if (ev.scrollTop === 0 && d > 0) document.getElementById('pull-refresh').style.height = Math.min(d, 60) + 'px'; });
-    ev.addEventListener('touchend', () => { if (parseInt(document.getElementById('pull-refresh').style.height) >= 60) { loadEntries(); renderCalendar(); } document.getElementById('pull-refresh').style.height = '0px'; });
 
     function renderCalendar() {
         const grid = document.getElementById('calendar-grid'), ist = getIST(), year = ist.getUTCFullYear(), month = ist.getUTCMonth();
@@ -699,14 +655,11 @@
 
     function switchTab(name) {
         document.querySelectorAll('.view-section').forEach(v => { v.style.display = 'none'; v.classList.remove('active'); });
-        const target = document.getElementById(`view-${name}`); if(target) { target.style.display = 'flex'; target.classList.add('active'); }
+        const target = document.getElementById(`view-${name}`); target.style.display = 'flex'; target.classList.add('active');
         document.querySelectorAll('.bar-icon').forEach(i => i.classList.remove('active')); document.getElementById(`tab-${name}`).classList.add('active');
-        const segIdx = {'entries':0, 'calendar':1, 'diary':2}[name];
-        if(segIdx !== undefined) { document.querySelectorAll('.segment').forEach(s => s.classList.remove('active')); document.querySelectorAll('.segment')[segIdx].classList.add('active'); }
-        if(name === 'entries') loadEntries(); if(name === 'calendar') renderCalendar(); if(name === 'gallery') {
+        if(name === 'entries') loadEntries(); if(name === 'calendar') renderCalendar(); if(name === 'gallery' && currentUser.coupleId) {
             const g = document.getElementById('gallery-container'); g.innerHTML = '';
-            if(!currentUser.coupleId) { g.innerHTML = '<p style="text-align:center; padding:20px; width:100%; color:var(--text-sub);">Connect with your partner.</p>'; return; }
-            db.collection('entries').where('coupleId', '==', currentUser.coupleId).orderBy('timestamp', 'desc').get().then(snap => {
+            db.collection('entries').where('coupleId', '==', currentUser.coupleId).where('role', '==', currentViewRole.toLowerCase()).orderBy('timestamp', 'desc').get().then(snap => {
                 snap.forEach(doc => { if(doc.data().image) g.innerHTML += `<div class="gallery-item" onclick="openEntry('${doc.id}')"><img src="${doc.data().image}"></div>`; });
             });
         }
@@ -732,13 +685,11 @@
         document.getElementById('read-modal').style.display = 'flex';
     }
     
+    // UI Helpers copied from stable base
     function setRole(r) { selectedRole = r; document.getElementById('btn-taki').classList.toggle('active', r === 'taki'); document.getElementById('btn-mitsuha').classList.toggle('active', r === 'mitsuha'); }
-    function handleLogin() { const e = document.getElementById('auth-email').value, p = document.getElementById('auth-pass').value, b = document.getElementById('login-btn'); if(!e || !p) return alert("Email/Password required"); b.innerText = "LOGGING IN..."; auth.signInWithEmailAndPassword(e, p).catch(err => { alert(err.message); b.innerText = "LOGIN"; }); }
-    function handleSignUp() { const e = document.getElementById('auth-email').value, p = document.getElementById('auth-pass').value, u = document.getElementById('auth-user').value; if(!e || !p || !u) return alert("Fill all fields"); auth.createUserWithEmailAndPassword(e, p).then(cred => db.collection('users').doc(cred.user.uid).set({ username: u, email: e, role: selectedRole, uid: cred.user.uid, coupleId: null })).catch(err => alert(err.message)); }
-    function guestSignIn() { if(window.location.protocol === 'file:') return alert("Guest Mode requires a server"); auth.signInAnonymously().catch(err => alert(err.message)); }
     function setMood(b, m) { currentMood = m; document.querySelectorAll('.option-btn').forEach(btn => btn.classList.remove('selected')); b.classList.add('selected'); }
+    function previewEntryImg(i) { if (i.files && i.files[0]) { const r = new FileReader(); r.onload = e => { entryImageData = e.target.result; document.getElementById('entry-img-preview').src = entryImageData; document.getElementById('entry-img-preview').style.display = 'block'; document.getElementById('img-preview-box').style.display = 'block'; }; r.readAsDataURL(i.files[0]); } }
     function clearEntryImg() { entryImageData = null; document.getElementById('img-preview-box').style.display = 'none'; }
-    function updatePfp(i) { if (i.files && i.files[0]) { const r = new FileReader(); r.onload = e => { const b = e.target.result; document.getElementById('user-pfp').src = b; db.collection('users').doc(currentUser.uid).update({ pfp: b }); }; r.readAsDataURL(i.files[0]); } }
     function toggleDarkMode(d) { document.documentElement.setAttribute('data-dark', d); localStorage.setItem('diary-dark-mode', d); }
     function toggleMusic(on) { const m = document.getElementById('bg-music'); if(on) m.play(); else m.pause(); }
     function logout() { auth.signOut().then(() => location.reload()); }
@@ -748,6 +699,7 @@
     function closeModal() { document.getElementById('read-modal').style.display = 'none'; }
     function deleteCurrentEntry() { if(confirm("Delete this memory?") && openEntryId) db.collection('entries').doc(openEntryId).delete().then(() => { closeModal(); showPopup("Deleted", "Thread cut."); }); }
 
+    // PAIRING UI
     function generateInviteCode() { const c = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; let code = ''; for (let i = 0; i < 6; i++) code += c.charAt(Math.floor(Math.random() * c.length)); db.collection('users').doc(currentUser.uid).update({ coupleId: code }).then(() => { currentUser.coupleId = code; renderConnectionUI(); showPopup("Code Generated", "Share it with your partner."); }); }
     function connectPartner() { const c = document.getElementById('partner-code-input').value.trim().toUpperCase(); if (c.length !== 6) return alert("Enter 6-char code."); db.collection('users').doc(currentUser.uid).update({ coupleId: c }).then(() => { currentUser.coupleId = c; renderConnectionUI(); showPopup("Connected!", "Timeline synchronized."); loadEntries(); }); }
     function renderConnectionUI() { const container = document.getElementById('connect-section'); if (!currentUser.coupleId) { container.innerHTML = `<p style="font-size:14px; color:var(--text-sub); margin-bottom:15px;">Connect with your partner.</p><button class="auth-btn" style="margin-bottom:15px;" onclick="generateInviteCode()">INVITE PARTNER</button><div style="display:flex; gap:10px;"><input type="text" id="partner-code-input" class="auth-input" placeholder="Code" style="margin-bottom:0;"><button class="auth-btn secondary" style="width:auto; padding:0 20px;" onclick="connectPartner()">JOIN</button></div>`; } else { container.innerHTML = `<p style="font-size:12px; color:var(--text-sub);">Your Connection ID:</p><div class="code-box"><span>${currentUser.coupleId}</span><i class="far fa-copy" onclick="copyCode('${currentUser.coupleId}')" style="cursor:pointer; color:var(--theme-color);"></i></div>`; } }
@@ -759,12 +711,6 @@
         document.getElementById('status-clock').innerText = ist.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: false });
         document.getElementById('swap-timer').innerText = `Swap in ${h}h ${m}m ${s}s`;
     }, 1000);
-
-    const ist = getIST();
-    document.getElementById('tear-date').innerText = ist.getUTCDate();
-    document.getElementById('tear-month').innerText = ist.toLocaleString('default', { month: 'long' }).toUpperCase();
-    document.getElementById('tear-day').innerText = ist.toLocaleString('default', { weekday: 'long' });
-    document.getElementById('status-date').innerText = ist.toLocaleString('default', { month: 'short', day: 'numeric' });
 
     if(localStorage.getItem('diary-dark-mode') === 'true') { document.documentElement.setAttribute('data-dark', 'true'); document.getElementById('dark-mode-toggle').checked = true; }
 </script>
