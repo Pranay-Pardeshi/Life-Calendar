@@ -121,7 +121,7 @@
             outline: none;
         }
         .auth-btn {
-            flex: 1; padding: 16px; border-radius: 14px; border: none;
+            width: 100%; padding: 16px; border-radius: 14px; border: none;
             background: var(--theme-color); color: white; font-weight: 700; font-size: 16px;
             cursor: pointer; transition: 0.2s; box-shadow: 0 4px 12px rgba(0,0,0,0.1);
             touch-action: manipulation;
@@ -171,7 +171,15 @@
 
         /* ENTRIES VIEW */
         #view-entries.active { background: var(--sky-bg) center/cover no-repeat; }
-        .entry-list { padding-bottom: 20px; width: 100%; }
+        .entry-list { padding-bottom: 20px; width: 100%; transition: transform 0.2s ease-out; }
+        
+        /* PULL TO REFRESH */
+        #pull-refresh {
+            height: 0; overflow: hidden; display: flex; align-items: center; justify-content: center;
+            background: rgba(255,255,255,0.2); backdrop-filter: blur(5px); transition: height 0.2s;
+        }
+        #pull-refresh.active { height: 60px; }
+
         .entry-item {
             display: flex; flex-direction: column; padding: 15px 18px; background: rgba(255, 255, 255, 0.85);
             backdrop-filter: blur(10px); border-bottom: 1px solid rgba(0,0,0,0.05);
@@ -228,9 +236,12 @@
 
         /* SETTINGS */
         #view-settings { padding: 30px; }
+        .settings-section { margin-bottom: 25px; }
+        .settings-title { font-size: 12px; color: var(--theme-color); font-weight: 700; margin-bottom: 10px; text-transform: uppercase; letter-spacing: 1px; }
         .pfp-container { width: 100px; height: 100px; border-radius: 50%; margin: 0 auto 15px; border: 3px solid var(--theme-color); overflow: hidden; cursor: pointer; position: relative; }
         .pfp-container img { width: 100%; height: 100%; object-fit: cover; }
         .settings-item { display: flex; justify-content: space-between; align-items: center; padding: 15px 0; border-bottom: 1px solid var(--border-color); color: var(--text-main); }
+        .code-box { background: var(--bg-body); padding: 15px; border-radius: 12px; font-family: monospace; font-size: 18px; text-align: center; letter-spacing: 2px; display: flex; align-items: center; justify-content: center; gap: 10px; margin-top: 10px; border: 1px solid var(--border-color); }
 
         /* BOTTOM BAR */
         .bottom-bar {
@@ -239,6 +250,7 @@
             padding-bottom: max(15px, env(safe-area-inset-bottom));
         }
         .bar-icon { color: rgba(255,255,255,0.7); font-size: 22px; cursor: pointer; transition: 0.2s; touch-action: manipulation; }
+        .bar-icon:active { transform: scale(0.9); }
         .bar-icon.active { color: #fff; }
 
         /* MODALS */
@@ -286,6 +298,16 @@
 
         .audio-player-container { margin-top: 15px; padding: 10px; background: var(--theme-light); border-radius: 10px; display: flex; align-items: center; gap: 10px; }
         .audio-play-btn { color: var(--theme-color); font-size: 20px; cursor: pointer; }
+
+        .swapping { animation: glitch 0.4s infinite; }
+        @keyframes glitch {
+            0% { transform: translate(0); }
+            20% { transform: translate(-3px, 3px); }
+            40% { transform: translate(-3px, -3px); }
+            60% { transform: translate(3px, 3px); }
+            80% { transform: translate(3px, -3px); }
+            100% { transform: translate(0); }
+        }
     </style>
 </head>
 <body>
@@ -347,7 +369,10 @@
         <div class="app-title" id="app-title-text">My Diary</div>
     </header>
 
-    <div class="view-section active" id="view-entries"><div id="entry-list" class="entry-list"></div></div>
+    <div class="view-section active" id="view-entries">
+        <div id="pull-refresh"><div class="spinner" style="width:20px; height:20px;"></div></div>
+        <div id="entry-list" class="entry-list"></div>
+    </div>
     
     <div class="view-section" id="view-calendar" style="padding:25px;">
         <div style="text-align:center; font-size:24px; color:var(--theme-color); margin-bottom:25px; font-weight:300;" id="cal-month">Month Year</div>
@@ -390,14 +415,24 @@
     </div>
 
     <div class="view-section" id="view-settings">
-        <div style="text-align:center; margin-bottom:30px;">
+        <div class="settings-section" style="text-align:center;">
             <div class="pfp-container" onclick="document.getElementById('pfp-input').click()"><img id="user-pfp" src="https://cdn-icons-png.flaticon.com/512/149/149071.png"></div>
-            <h2 id="settings-username">Username</h2><p id="settings-email" style="color:var(--text-sub); font-size:14px;">email@example.com</p>
+            <h2 id="settings-username">Username</h2>
+            <p id="settings-email" style="color:var(--text-sub); font-size:14px; margin-bottom:10px;">email@example.com</p>
         </div>
         <input type="file" id="pfp-input" style="display:none;" accept="image/*" onchange="updatePfp(this)">
-        <div class="settings-item"><span>Dark Mode</span><input type="checkbox" id="dark-mode-toggle" onchange="toggleDarkMode(this.checked)"></div>
-        <div class="settings-item"><span>Background Music</span><input type="checkbox" id="music-toggle" onchange="toggleMusic(this.checked)"></div>
-        <div class="settings-item" onclick="logout()" style="color:#FF3B30; cursor:pointer;"><span>Log Out</span><i class="fas fa-sign-out-alt"></i></div>
+
+        <div class="settings-section">
+            <h3 class="settings-title">Connection</h3>
+            <div id="connect-section"></div>
+        </div>
+
+        <div class="settings-section">
+            <h3 class="settings-title">Preferences</h3>
+            <div class="settings-item"><span>Dark Mode</span><input type="checkbox" id="dark-mode-toggle" onchange="toggleDarkMode(this.checked)"></div>
+            <div class="settings-item"><span>Background Music</span><input type="checkbox" id="music-toggle" onchange="toggleMusic(this.checked)"></div>
+            <div class="settings-item" onclick="logout()" style="color:#FF3B30; cursor:pointer;"><span>Log Out</span><i class="fas fa-sign-out-alt"></i></div>
+        </div>
     </div>
 
     <div class="bottom-bar">
@@ -448,6 +483,7 @@
     firebase.initializeApp(firebaseConfig);
     const auth = firebase.auth();
     const db = firebase.firestore();
+    db.enablePersistence().catch(() => {});
     auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL);
 
     let currentUser = null, selectedRole = 'taki', currentViewRole = 'taki', entryImageData = null, entryAudioData = null, currentMood = 'sun', currentEntries = [], openEntryId = null, mediaRecorder, audioChunks = [], isRecording = false, currentLocation = null;
@@ -474,12 +510,10 @@
                     r.readAsDataURL(blob);
                     stream.getTracks().forEach(t => t.stop());
                 };
-                mediaRecorder.start(); isRecording = true;
-                document.getElementById('voice-btn').classList.add('recording');
+                mediaRecorder.start(); isRecording = true; document.getElementById('voice-btn').classList.add('recording');
             } catch (err) { alert("Microphone access denied."); }
         } else {
-            mediaRecorder.stop(); isRecording = false;
-            document.getElementById('voice-btn').classList.remove('recording');
+            mediaRecorder.stop(); isRecording = false; document.getElementById('voice-btn').classList.remove('recording');
         }
     }
     function clearAudio() { entryAudioData = null; document.getElementById('audio-preview-box').style.display = 'none'; }
@@ -490,11 +524,10 @@
             document.getElementById('location-tag').style.display = 'block';
             navigator.geolocation.getCurrentPosition(pos => {
                 const { latitude, longitude } = pos.coords;
-                fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}`)
-                    .then(r => r.json()).then(data => {
-                        currentLocation = data.display_name.split(',')[0] + ", " + data.display_name.split(',')[1];
-                        document.getElementById('location-text').innerText = currentLocation;
-                    });
+                fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}`).then(r => r.json()).then(data => {
+                    currentLocation = data.display_name.split(',')[0] + ", " + data.display_name.split(',')[1];
+                    document.getElementById('location-text').innerText = currentLocation;
+                });
             }, () => document.getElementById('location-tag').style.display = 'none');
         }
     }
@@ -509,7 +542,7 @@
     function handleSignUp() {
         const e = document.getElementById('auth-email').value, p = document.getElementById('auth-pass').value, u = document.getElementById('auth-user').value;
         if(!e || !p || !u) return alert("Fill all fields");
-        auth.createUserWithEmailAndPassword(e, p).then(cred => db.collection('users').doc(cred.user.uid).set({ username: u, email: e, role: selectedRole, uid: cred.user.uid })).catch(err => alert(err.message));
+        auth.createUserWithEmailAndPassword(e, p).then(cred => db.collection('users').doc(cred.user.uid).set({ username: u, email: e, role: selectedRole, uid: cred.user.uid, coupleId: null })).catch(err => alert(err.message));
     }
     function guestSignIn() { if(window.location.protocol === 'file:') return alert("Guest Mode requires a server"); auth.signInAnonymously().catch(err => alert(err.message)); }
 
@@ -524,7 +557,7 @@
                         l.style.display = 'none'; a.style.display = 'none';
                         checkSwap(); renderCalendar(); fetchLocation();
                     } else if (user.isAnonymous) {
-                        db.collection('users').doc(user.uid).set({ username: "Guest Voyager", role: selectedRole, uid: user.uid, isGuest: true }).then(() => fetchProfile());
+                        db.collection('users').doc(user.uid).set({ username: "Guest Voyager", role: selectedRole, uid: user.uid, isGuest: true, coupleId: null }).then(() => fetchProfile());
                     } else if (retry < 15) setTimeout(() => fetchProfile(retry + 1), 1000);
                     else { l.style.display = 'none'; a.style.display = 'flex'; }
                 });
@@ -533,56 +566,71 @@
         } else { l.style.display = 'none'; a.style.display = 'flex'; a.style.opacity = '1'; }
     });
 
+    // --- PAIRING ---
+    function generateInviteCode() {
+        const c = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; let code = '';
+        for (let i = 0; i < 6; i++) code += c.charAt(Math.floor(Math.random() * c.length));
+        db.collection('users').doc(currentUser.uid).update({ coupleId: code }).then(() => { currentUser.coupleId = code; renderConnectionUI(); showPopup("Code Generated", "Share it with your partner."); });
+    }
+    function connectPartner() {
+        const c = document.getElementById('partner-code-input').value.trim().toUpperCase();
+        if (c.length !== 6) return alert("Enter 6-char code.");
+        db.collection('users').doc(currentUser.uid).update({ coupleId: c }).then(() => { currentUser.coupleId = c; renderConnectionUI(); showPopup("Connected!", "Timeline synchronized."); loadEntries(); });
+    }
+    function renderConnectionUI() {
+        const container = document.getElementById('connect-section');
+        if (!currentUser.coupleId) {
+            container.innerHTML = `<p style="font-size:14px; color:var(--text-sub); margin-bottom:15px;">Connect with your partner.</p><button class="auth-btn" style="margin-bottom:15px;" onclick="generateInviteCode()">INVITE PARTNER</button><div style="display:flex; gap:10px;"><input type="text" id="partner-code-input" class="auth-input" placeholder="Code" style="margin-bottom:0;"><button class="auth-btn secondary" style="width:auto; padding:0 20px;" onclick="connectPartner()">JOIN</button></div>`;
+        } else {
+            container.innerHTML = `<p style="font-size:12px; color:var(--text-sub);">Your Connection ID:</p><div class="code-box"><span>${currentUser.coupleId}</span><i class="far fa-copy" onclick="copyCode('${currentUser.coupleId}')" style="cursor:pointer; color:var(--theme-color);"></i></div>`;
+        }
+    }
+    function copyCode(c) { navigator.clipboard.writeText(c).then(() => showPopup("Copied", "Code copied.")); }
+
     // --- LOGIC ---
     function saveEntry() {
+        if (!currentUser.coupleId) return alert("Connect with your partner in Settings first.");
         const t = document.getElementById('entry-title').value, c = document.getElementById('entry-content').value;
         if (!t || !c) return alert("Title/Content required");
         showPopup("Saving...", "Connecting timeline...");
         const ist = getIST();
-        db.collection('entries').add({ author_uid: currentUser.uid, role: currentUser.role.toLowerCase(), title: t, content: c, image: entryImageData || null, audio: entryAudioData || null, mood: currentMood, location: currentLocation, timestamp: ist.getTime(), day: ist.getUTCDate(), month: ist.toLocaleString('default', { month: 'short' }) }).then(() => {
+        db.collection('entries').add({ author_uid: currentUser.uid, coupleId: currentUser.coupleId, role: currentUser.role.toLowerCase(), title: t, content: c, image: entryImageData || null, audio: entryAudioData || null, mood: currentMood, location: currentLocation, timestamp: ist.getTime(), day: ist.getUTCDate(), month: ist.toLocaleString('default', { month: 'short' }) }).then(() => {
             document.getElementById('entry-title').value = ''; document.getElementById('entry-content').value = '';
             document.getElementById('img-preview-box').style.display = 'none'; entryImageData = null; clearAudio();
-            switchTab('entries'); showPopup("Saved", "The memory has been woven into Musubi."); setTimeout(closePopup, 2000);
-        }).catch(err => { alert(err.message); closePopup(); });
+            switchTab('entries'); showPopup("Saved", "Memory woven into Musubi."); setTimeout(closePopup, 2000);
+        });
     }
 
     function loadEntries() {
         const list = document.getElementById('entry-list');
+        if (!currentUser || !currentUser.coupleId) { list.innerHTML = '<div style="padding:40px; text-align:center; color:#fff;"><i class="fas fa-link" style="font-size:2rem; display:block; margin-bottom:15px; opacity:0.7;"></i>Connect with your partner in Settings.</div>'; return; }
         list.innerHTML = '<p style="text-align:center; padding:20px; color:#fff;">Calling memories...</p>';
-        db.collection('entries').where('role', '==', currentViewRole.toLowerCase()).orderBy('timestamp', 'desc').limit(20).onSnapshot(snap => {
+        db.collection('entries').where('coupleId', '==', currentUser.coupleId).where('role', '==', currentViewRole.toLowerCase()).orderBy('timestamp', 'desc').limit(20).onSnapshot(snap => {
             list.innerHTML = ''; currentEntries = [];
             snap.forEach(doc => {
                 const data = doc.data(); data.id = doc.id; currentEntries.push(data);
-                const hasImg = data.image ? '<i class="fas fa-image" style="margin-right:5px;"></i>' : '';
-                const hasAudio = data.audio ? '<i class="fas fa-volume-up" style="margin-right:5px;"></i>' : '';
+                const hasImg = data.image ? '<i class="fas fa-image"></i>' : '', hasAudio = data.audio ? '<i class="fas fa-volume-up"></i>' : '';
                 list.innerHTML += `<div class="entry-item" onclick="openEntry('${doc.id}')"><div class="entry-row"><div class="date-col"><span class="date-num">${data.day}</span><span class="date-day">${data.month}</span></div><div class="content-col"><div class="entry-meta">${hasImg} ${hasAudio} <i class="fas fa-${data.mood || 'sun'}"></i></div><div class="entry-title">${data.title}</div><div class="entry-excerpt">${data.content}</div></div></div></div>`;
             });
             if(snap.empty) list.innerHTML = '<p style="text-align:center; padding:40px; color:#fff;">No memories yet.</p>';
         });
     }
 
+    // --- PULL REFRESH ---
+    let ts = 0; const ev = document.getElementById('view-entries');
+    ev.addEventListener('touchstart', e => ts = e.touches[0].pageY);
+    ev.addEventListener('touchmove', e => { let d = e.touches[0].pageY - ts; if (ev.scrollTop === 0 && d > 0) document.getElementById('pull-refresh').style.height = Math.min(d, 60) + 'px'; });
+    ev.addEventListener('touchend', () => { if (parseInt(document.getElementById('pull-refresh').style.height) >= 60) { loadEntries(); renderCalendar(); } document.getElementById('pull-refresh').style.height = '0px'; });
+
     function renderCalendar() {
         const grid = document.getElementById('calendar-grid'), ist = getIST(), year = ist.getUTCFullYear(), month = ist.getUTCMonth();
         document.getElementById('cal-month').innerText = ist.toLocaleString('default', { month: 'long', year: 'numeric' });
-        grid.innerHTML = '';
-        ['S','M','T','W','T','F','S'].forEach(d => grid.innerHTML += `<div style="font-weight:700; color:var(--text-sub); font-size:12px;">${d}</div>`);
+        grid.innerHTML = ''; ['S','M','T','W','T','F','S'].forEach(d => grid.innerHTML += `<div style="font-weight:700; color:var(--text-sub); font-size:12px;">${d}</div>`);
         for(let i=0; i<new Date(year, month, 1).getDay(); i++) grid.innerHTML += '<div></div>';
-        db.collection('entries').where('role', '==', currentViewRole.toLowerCase()).get().then(snap => {
+        if (!currentUser || !currentUser.coupleId) return;
+        db.collection('entries').where('coupleId', '==', currentUser.coupleId).where('role', '==', currentViewRole.toLowerCase()).get().then(snap => {
             const days = snap.docs.map(doc => doc.data().day);
-            for(let d=1; d<=new Date(year, month + 1, 0).getDate(); d++) {
-                grid.innerHTML += `<div class="cal-cell ${days.includes(d)?'has-entry':''} ${d===ist.getUTCDate()?'is-today':''}">${d}</div>`;
-            }
-        });
-    }
-
-    function loadGallery() {
-        const grid = document.getElementById('gallery-container'); grid.innerHTML = '';
-        db.collection('entries').where('role', '==', currentViewRole.toLowerCase()).orderBy('timestamp', 'desc').get().then(snap => {
-            snap.forEach(doc => {
-                const data = doc.data();
-                if(data.image) grid.innerHTML += `<div class="gallery-item" onclick="openEntry('${doc.id}')"><img src="${data.image}"></div>`;
-            });
-            if(grid.innerHTML === '') grid.innerHTML = '<p style="text-align:center; padding:20px; width:100%; color:var(--text-sub);">No photos in this timeline.</p>';
+            for(let d=1; d<=new Date(year, month + 1, 0).getDate(); d++) grid.innerHTML += `<div class="cal-cell ${days.includes(d)?'has-entry':''} ${d===ist.getUTCDate()?'is-today':''}">${d}</div>`;
         });
     }
 
@@ -592,12 +640,13 @@
         document.querySelectorAll('.bar-icon').forEach(i => i.classList.remove('active')); document.getElementById(`tab-${name}`).classList.add('active');
         const segIdx = {'entries':0, 'calendar':1, 'diary':2}[name];
         if(segIdx !== undefined) { document.querySelectorAll('.segment').forEach(s => s.classList.remove('active')); document.querySelectorAll('.segment')[segIdx].classList.add('active'); }
-        if(name === 'entries') loadEntries(); if(name === 'calendar') renderCalendar(); if(name === 'gallery') loadGallery();
-        if(name === 'settings' && currentUser) {
-            document.getElementById('settings-username').innerText = currentUser.username;
-            document.getElementById('settings-email').innerText = currentUser.email;
-            if(currentUser.pfp) document.getElementById('user-pfp').src = currentUser.pfp;
+        if(name === 'entries') loadEntries(); if(name === 'calendar') renderCalendar(); if(name === 'gallery') {
+            const g = document.getElementById('gallery-container'); g.innerHTML = '';
+            db.collection('entries').where('coupleId', '==', currentUser.coupleId).where('role', '==', currentViewRole.toLowerCase()).orderBy('timestamp', 'desc').get().then(snap => {
+                snap.forEach(doc => { if(doc.data().image) g.innerHTML += `<div class="gallery-item" onclick="openEntry('${doc.id}')"><img src="${doc.data().image}"></div>`; });
+            });
         }
+        if(name === 'settings' && currentUser) { document.getElementById('settings-username').innerText = currentUser.username; document.getElementById('settings-email').innerText = currentUser.email; if(currentUser.pfp) document.getElementById('user-pfp').src = currentUser.pfp; renderConnectionUI(); }
     }
 
     function checkSwap() {
@@ -607,24 +656,21 @@
         if(old !== currentViewRole) { const app = document.getElementById('app-container'); app.classList.add('swapping'); setTimeout(() => app.classList.remove('swapping'), 1000); }
         document.documentElement.setAttribute('data-theme', currentViewRole === 'mitsuha' ? 'mitsuha' : '');
         document.getElementById('app-title-text').innerText = `${currentViewRole.charAt(0).toUpperCase() + currentViewRole.slice(1)}'s Diary`;
-        const tearMonth = document.getElementById('tear-month');
-        if(currentViewRole === 'mitsuha') tearMonth.style.background = '#FF6B6B'; else tearMonth.style.background = '#5D8CAE';
+        const tm = document.getElementById('tear-month'); if(currentViewRole === 'mitsuha') tm.style.background = '#FF6B6B'; else tm.style.background = '#5D8CAE';
         loadEntries();
     }
 
     function openEntry(id) {
         const e = currentEntries.find(x => x.id === id); if(!e) return; openEntryId = id;
-        document.getElementById('m-title').innerText = e.title; document.getElementById('m-text').innerText = e.content;
-        document.getElementById('m-date').innerText = `${e.month} ${e.day}`;
+        document.getElementById('m-title').innerText = e.title; document.getElementById('m-text').innerText = e.content; document.getElementById('m-date').innerText = `${e.month} ${e.day}`;
         const img = document.getElementById('m-img'); if(e.image) { img.src = e.image; img.style.display = 'block'; } else img.style.display = 'none';
         const loc = document.getElementById('m-location'); if(e.location) { loc.innerText = e.location; loc.style.display = 'block'; } else loc.style.display = 'none';
-        const aud = document.getElementById('m-audio');
-        if(e.audio) { aud.innerHTML = `<div class="audio-player-container"><i class="fas fa-play audio-play-btn" onclick="playMemoryAudio('${e.audio}')"></i><span>Voice Note</span></div>`; aud.style.display = 'block'; } else aud.style.display = 'none';
+        const aud = document.getElementById('m-audio'); if(e.audio) { aud.innerHTML = `<div class="audio-player-container"><i class="fas fa-play audio-play-btn" onclick="playMemoryAudio('${e.audio}')"></i><span>Voice Note</span></div>`; aud.style.display = 'block'; } else aud.style.display = 'none';
         document.getElementById('read-modal').style.display = 'flex';
     }
-    function playMemoryAudio(src) { const a = new Audio(src); a.play(); }
+    function playMemoryAudio(s) { new Audio(s).play(); }
     function closeModal() { document.getElementById('read-modal').style.display = 'none'; }
-    function deleteCurrentEntry() { if(confirm("Delete this memory?") && openEntryId) { db.collection('entries').doc(openEntryId).delete().then(() => { closeModal(); showPopup("Deleted", "The thread has been cut."); }); } }
+    function deleteCurrentEntry() { if(confirm("Delete this memory?") && openEntryId) db.collection('entries').doc(openEntryId).delete().then(() => { closeModal(); showPopup("Deleted", "Thread cut."); }); }
 
     function setRole(r) { selectedRole = r; document.getElementById('btn-taki').classList.toggle('active', r === 'taki'); document.getElementById('btn-mitsuha').classList.toggle('active', r === 'mitsuha'); }
     function setMood(b, m) { currentMood = m; document.querySelectorAll('.option-btn').forEach(btn => btn.classList.remove('selected')); b.classList.add('selected'); }
