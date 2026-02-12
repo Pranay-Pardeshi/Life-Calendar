@@ -84,7 +84,7 @@
         .auth-card { width: 100%; max-width: 320px; text-align: center; }
         .auth-logo { font-size: 2.5rem; color: var(--theme-color); font-weight: 700; margin-bottom: 30px; }
         .auth-input { width: 100%; padding: 15px; margin-bottom: 12px; border: 1px solid var(--border-color); border-radius: 12px; background: var(--input-bg); color: var(--text-main); font-size: 16px; outline: none; }
-        .auth-btn { flex: 1; padding: 16px; border-radius: 14px; border: none; background: var(--theme-color); color: white; font-weight: 700; font-size: 16px; cursor: pointer; transition: 0.2s; box-shadow: 0 4px 12px rgba(0,0,0,0.1); touch-action: manipulation; }
+        .auth-btn { width: 100%; padding: 16px; border-radius: 14px; border: none; background: var(--theme-color); color: white; font-weight: 700; font-size: 16px; cursor: pointer; transition: 0.2s; box-shadow: 0 4px 12px rgba(0,0,0,0.1); touch-action: manipulation; }
         .auth-btn:active { transform: scale(0.96); opacity: 0.9; }
         .auth-btn-group { display: flex; gap: 12px; margin-top: 20px; width: 100%; }
         .auth-btn.secondary { background: #8e8e93; }
@@ -103,92 +103,190 @@
         .numpad { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; }
         .num-btn { width: 70px; height: 70px; border-radius: 50%; border: 1px solid var(--border-color); background: var(--bg-body); display: flex; align-items: center; justify-content: center; font-size: 1.5rem; color: var(--text-main); cursor: pointer; transition: 0.2s; }
         .num-btn:active { background: var(--theme-light); transform: scale(0.9); }
-        #pattern-container { display: none; } /* Placeholder for Pattern */
+
+        /* --- TEAR-OFF CALENDAR --- */
+        #tear-off-overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.9); z-index: 9999;
+            backdrop-filter: blur(10px);
+            display: flex; align-items: center; justify-content: center;
+        }
+        .calendar-paper {
+            width: 280px; height: 380px; background: #fff; position: relative;
+            box-shadow: 0 20px 50px rgba(0,0,0,0.5); display: flex; flex-direction: column;
+            text-align: center; transform-origin: top center; cursor: pointer; border-radius: 4px;
+        }
+        .torn-off { animation: tearFall 0.8s forwards; pointer-events: none; }
+        @keyframes tearFall {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(20deg) translateY(120vh); opacity: 0; }
+        }
 
         /* --- UI COMPONENTS --- */
-        .status-bar { height: 44px; display: flex; justify-content: space-between; align-items: center; padding: 0 20px; font-size: 13px; color: var(--text-main); font-weight: 600; }
+        .status-bar {
+            height: 44px; display: flex; justify-content: space-between; align-items: center;
+            padding: 0 20px; font-size: 13px; color: var(--text-main); font-weight: 600;
+        }
         .pairing-indicator { display: flex; align-items: center; gap: 5px; color: var(--akai-ito); font-size: 10px; font-weight: 700; opacity: 0; transition: 0.5s; }
         .pairing-indicator.active { opacity: 1; animation: stringGlow 2s infinite; }
         @keyframes stringGlow { 0%, 100% { filter: drop-shadow(0 0 2px var(--akai-ito)); } 50% { filter: drop-shadow(0 0 8px var(--akai-ito)); } }
 
         header { padding: 10px 15px 15px 15px; border-bottom: 1px solid var(--border-color); }
-        .segmented-control { display: flex; border: 1.5px solid var(--theme-color); border-radius: 8px; overflow: hidden; height: 36px; }
-        .segment { flex: 1; display: flex; align-items: center; justify-content: center; font-size: 14px; color: var(--theme-color); cursor: pointer; font-weight: 500; transition: 0.2s; }
+        .segmented-control {
+            display: flex; border: 1.5px solid var(--theme-color); border-radius: 8px;
+            overflow: hidden; height: 36px;
+        }
+        .segment {
+            flex: 1; display: flex; align-items: center; justify-content: center;
+            font-size: 14px; color: var(--theme-color); cursor: pointer; font-weight: 500;
+        }
         .segment.active { background: var(--theme-color); color: #fff; }
+        
         .app-title { text-align: center; color: var(--theme-color); font-size: 19px; font-weight: 500; margin-top: 10px; }
 
-        /* VIEWS */
-        .view-section { flex: 1; overflow-y: auto; display: none; -webkit-overflow-scrolling: touch; position: relative; will-change: transform; flex-direction: column; }
-        .view-section.active { display: flex; }
+        .view-section { 
+            flex: 1; overflow-y: auto; display: none; 
+            -webkit-overflow-scrolling: touch; position: relative;
+            will-change: transform;
+        }
+        .view-section.active { display: flex; flex-direction: column; }
 
-        /* ENTRIES LIST */
+        /* ENTRIES VIEW */
         #view-entries.active { background: var(--sky-bg) center/cover no-repeat; }
         .entry-list { padding-bottom: 20px; width: 100%; transition: transform 0.2s ease-out; }
-        #pull-refresh { height: 0; overflow: hidden; display: flex; align-items: center; justify-content: center; background: rgba(255,255,255,0.2); backdrop-filter: blur(5px); transition: height 0.2s; }
+        
+        /* PULL TO REFRESH */
+        #pull-refresh {
+            height: 0; overflow: hidden; display: flex; align-items: center; justify-content: center;
+            background: rgba(255,255,255,0.2); backdrop-filter: blur(5px); transition: height 0.2s;
+        }
         #pull-refresh.active { height: 60px; }
 
-        .entry-item { display: flex; flex-direction: column; padding: 15px 18px; background: rgba(255, 255, 255, 0.85); backdrop-filter: blur(10px); border-bottom: 1px solid rgba(0,0,0,0.05); margin-bottom: 1px; cursor: pointer; }
+        .entry-item {
+            display: flex; flex-direction: column; padding: 15px 18px; background: rgba(255, 255, 255, 0.85);
+            backdrop-filter: blur(10px); border-bottom: 1px solid rgba(0,0,0,0.05);
+            margin-bottom: 1px; cursor: pointer;
+        }
         [data-dark="true"] .entry-item { background: rgba(30, 30, 30, 0.85); }
+        
         .entry-row { display: flex; }
         .date-col { width: 55px; display: flex; flex-direction: column; align-items: center; margin-right: 18px; border-right: 1px solid rgba(0,0,0,0.1); }
         .date-num { font-size: 38px; color: var(--text-date); font-weight: 300; }
         .date-day { font-size: 11px; color: var(--text-sub); text-transform: uppercase; }
+        
         .content-col { flex: 1; min-width: 0; }
         .entry-title { font-size: 17px; font-weight: 700; color: var(--text-main); }
         .entry-excerpt { font-size: 13px; color: var(--text-sub); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
         .entry-img-attached { width: 100%; height: auto; max-height: 250px; object-fit: cover; border-radius: 12px; margin-top: 12px; opacity: 0; transition: opacity 0.5s; }
         .entry-img-attached.loaded { opacity: 1; }
+        
         .entry-meta { display: flex; gap: 10px; font-size: 10px; color: var(--theme-color); margin-top: 5px; font-weight: 600; }
 
         /* CALENDAR */
         .cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 8px; text-align: center; width: 100%; }
-        .cal-cell { aspect-ratio: 1; display: flex; align-items: center; justify-content: center; border-radius: 50%; font-size: 14px; position: relative; transition: 0.2s; cursor: pointer; }
+        .cal-cell { 
+            aspect-ratio: 1; display: flex; align-items: center; justify-content: center;
+            border-radius: 50%; font-size: 14px; position: relative; transition: 0.2s; cursor: pointer; 
+        }
         .cal-cell.has-entry { font-weight: 700; color: var(--theme-color); }
-        .cal-cell.has-entry::after { content: ''; position: absolute; bottom: 4px; width: 4px; height: 4px; background: var(--theme-color); border-radius: 50%; }
-        .cal-cell.is-today { background: var(--theme-color); color: #fff !important; font-weight: 700; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
-        [data-theme="mitsuha"] .cal-cell.is-today { background: transparent; border: 2.5px solid var(--theme-color); color: var(--theme-color) !important; }
-
-        /* GALLERY */
-        .gallery-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 5px; padding: 5px; }
-        .gallery-item { aspect-ratio: 1; background: #ddd; border-radius: 4px; overflow: hidden; cursor: pointer; border: 1px solid var(--border-color); }
-        .gallery-item img { width: 100%; height: 100%; object-fit: cover; }
-        .gallery-add-btn { background: var(--theme-color); color: #fff; padding: 15px; border-radius: 12px; text-align: center; margin: 10px; font-weight: 700; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 10px; }
+        .cal-cell.has-entry::after {
+            content: ''; position: absolute; bottom: 4px; width: 4px; height: 4px;
+            background: var(--theme-color); border-radius: 50%;
+        }
+        .cal-cell.is-today { 
+            background: var(--theme-color); color: #fff !important; font-weight: 700;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+        }
+        [data-theme="mitsuha"] .cal-cell.is-today {
+            background: transparent; border: 2.5px solid var(--theme-color); color: var(--theme-color) !important;
+        }
 
         /* DIARY EDITOR */
-        .option-btn { background: var(--bg-body); border: 1px solid var(--border-color); border-radius: 8px; padding: 8px 12px; font-size: 14px; color: var(--text-sub); cursor: pointer; transition: 0.2s; display: flex; align-items: center; gap: 5px; }
-        .option-btn.selected { background: var(--theme-color); color: #fff; border-color: var(--theme-color); }
-        .option-btn.recording { background: #FF3B30; color: #fff; animation: pulse 1s infinite; }
-        @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.5; } 100% { opacity: 1; } }
+        .option-btn {
+            background: var(--bg-body); border: 1px solid var(--border-color); border-radius: 50%; 
+            width: 44px; height: 44px;
+            font-size: 18px; color: var(--text-sub); cursor: pointer; transition: 0.2s; display: flex; align-items: center; gap: 5px; justify-content: center;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+        }
+        .option-btn.selected { background: var(--theme-color); color: #fff; border-color: var(--theme-color); box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
+        .option-btn.recording { background: #FF3B30 !important; color: #fff !important; animation: pulse 1s infinite; }
+        @keyframes pulse { 0% { opacity: 1; transform: scale(1); } 50% { opacity: 0.7; transform: scale(1.1); } 100% { opacity: 1; transform: scale(1); } }
+
+        /* GALLERY VIEW */
+        #view-gallery { background: var(--bg-body); padding: 15px; }
+        .gallery-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+        .gallery-item { aspect-ratio: 1; background: #ddd; border-radius: 8px; overflow: hidden; cursor: pointer; border: 1px solid var(--border-color); }
+        .gallery-item img { width: 100%; height: 100%; object-fit: cover; }
+        .gallery-add-btn { 
+            background: var(--theme-color); color: #fff; padding: 15px; border-radius: 12px; text-align: center; margin-bottom: 20px; font-weight: 700; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 10px; 
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1); transition: transform 0.1s;
+        }
+        .gallery-add-btn:active { transform: scale(0.98); }
+
+        /* SETTINGS */
+        #view-settings { padding: 30px; }
+        .settings-section { margin-bottom: 25px; }
+        .settings-title { font-size: 12px; color: var(--theme-color); font-weight: 700; margin-bottom: 10px; text-transform: uppercase; letter-spacing: 1px; }
+        .pfp-container { width: 100px; height: 100px; border-radius: 50%; margin: 0 auto 15px; border: 3px solid var(--theme-color); overflow: hidden; cursor: pointer; position: relative; }
+        .pfp-container img { width: 100%; height: 100%; object-fit: cover; }
+        .settings-item { display: flex; justify-content: space-between; align-items: center; padding: 15px 0; border-bottom: 1px solid var(--border-color); color: var(--text-main); gap: 10px; }
+        .code-box { background: var(--bg-body); padding: 15px; border-radius: 12px; font-family: monospace; font-size: 18px; text-align: center; letter-spacing: 2px; display: flex; align-items: center; justify-content: center; gap: 10px; margin-top: 10px; border: 1px solid var(--border-color); }
 
         /* BOTTOM BAR */
-        .bottom-bar { min-height: 60px; background: var(--bottom-bar); display: flex; justify-content: space-around; align-items: center; padding-bottom: max(15px, env(safe-area-inset-bottom)); box-shadow: 0 -5px 20px rgba(0,0,0,0.1); }
+        .bottom-bar {
+            min-height: 60px; background: var(--bottom-bar); display: flex;
+            justify-content: space-around; align-items: center;
+            padding-bottom: max(15px, env(safe-area-inset-bottom));
+        }
         .bar-icon { color: rgba(255,255,255,0.7); font-size: 22px; cursor: pointer; transition: 0.2s; touch-action: manipulation; }
-        .bar-icon.active { color: #fff; transform: translateY(-2px); }
+        .bar-icon.active { color: #fff; }
 
         /* MODALS */
-        .modal-overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); display: none; justify-content: center; align-items: flex-end; backdrop-filter: blur(5px); z-index: 9500; }
-        .paper-sheet { width: 100%; height: 90%; background: var(--paper-bg); border-top-left-radius: 25px; border-top-right-radius: 25px; display: flex; flex-direction: column; animation: slideUp 0.3s ease-out; }
+        .modal-overlay {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.5); z-index: 9000; display: none;
+            justify-content: center; align-items: flex-end; backdrop-filter: blur(5px);
+        }
+        .paper-sheet {
+            width: 100%; height: 90%; background: var(--paper-bg); border-top-left-radius: 25px; border-top-right-radius: 25px;
+            display: flex; flex-direction: column; animation: slideUp 0.3s ease-out;
+        }
+        @keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
+        
         .sheet-header { padding: 20px; border-bottom: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center; background: var(--bg-body); border-top-left-radius: 25px; border-top-right-radius: 25px; }
         .sheet-body { padding: 30px; flex: 1; overflow-y: auto; line-height: 1.8; color: var(--text-main); font-size: 16px; }
-        @keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
 
-        .ios-popup { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%) scale(0.8); background: rgba(255,255,255,0.95); backdrop-filter: blur(25px); padding: 25px; border-radius: 20px; text-align: center; box-shadow: 0 15px 45px rgba(0,0,0,0.3); width: 280px; opacity: 0; pointer-events: none; transition: 0.3s; z-index: 11000; }
+        .ios-popup {
+            position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%) scale(0.8);
+            background: rgba(255,255,255,0.95); backdrop-filter: blur(25px);
+            padding: 25px; border-radius: 20px; text-align: center;
+            box-shadow: 0 15px 45px rgba(0,0,0,0.3); z-index: 11000;
+            width: 280px; opacity: 0; pointer-events: none; transition: 0.3s;
+        }
         [data-dark="true"] .ios-popup { background: rgba(40,40,40,0.95); color: #fff; }
         .ios-popup.show { opacity: 1; transform: translate(-50%, -50%) scale(1); pointer-events: auto; }
         .popup-btn { margin-top: 20px; color: var(--ios-blue); font-weight: 600; cursor: pointer; border-top: 1px solid rgba(0,0,0,0.1); padding-top: 15px; }
 
-        .photo-source-modal { position: fixed; bottom: 0; left: 0; width: 100%; background: var(--bg-app); border-top-left-radius: 20px; border-top-right-radius: 20px; z-index: 9600; padding: 20px; transform: translateY(100%); transition: transform 0.3s; box-shadow: 0 -5px 20px rgba(0,0,0,0.1); display: flex; flex-direction: column; gap: 15px; }
+        .photo-source-modal {
+            position: fixed; bottom: 0; left: 0; width: 100%; background: var(--bg-app);
+            border-top-left-radius: 20px; border-top-right-radius: 20px; z-index: 9600;
+            padding: 20px; transform: translateY(100%); transition: transform 0.3s cubic-bezier(0.17, 0.89, 0.32, 1.28);
+            box-shadow: 0 -5px 20px rgba(0,0,0,0.1); display: flex; flex-direction: column; gap: 15px;
+        }
         .photo-source-modal.active { transform: translateY(0); }
-        .source-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); display: none; z-index: 9550; }
+        .source-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 9550; display: none; }
         .source-overlay.active { display: block; }
         .source-btn { width: 100%; padding: 15px; background: var(--bg-body); border: 1px solid var(--border-color); border-radius: 12px; font-size: 16px; font-weight: 500; color: var(--text-main); cursor: pointer; display: flex; align-items: center; gap: 15px; justify-content: center; }
 
-        /* --- SETTINGS PIN BOX --- */
-        .pin-display { display: flex; justify-content: center; gap: 15px; margin: 20px 0; }
-        .pin-box { width: 50px; height: 60px; border: 2px solid var(--border-color); border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 1.5rem; background: var(--bg-body); color: var(--text-main); }
-
         .swapping { animation: glitch 0.4s infinite; }
-        @keyframes glitch { 0% { transform: translate(0); } 20% { transform: translate(-3px, 3px); } 100% { transform: translate(0); } }
+        @keyframes glitch {
+            0% { transform: translate(0); }
+            20% { transform: translate(-3px, 3px); }
+            40% { transform: translate(-3px, -3px); }
+            60% { transform: translate(3px, 3px); }
+            80% { transform: translate(3px, -3px); }
+            100% { transform: translate(0); }
+        }
     </style>
 </head>
 <body>
@@ -205,24 +303,12 @@
     </div>
 </div>
 
-<!-- LOCK SCREEN -->
-<div id="lock-screen">
-    <div class="lock-title" id="lock-msg">Enter Passcode</div>
-    <div class="pin-dots" id="pin-dots"><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div></div>
-    <div class="numpad" id="numpad">
-        <div class="num-btn" onclick="pressKey(1)">1</div><div class="num-btn" onclick="pressKey(2)">2</div><div class="num-btn" onclick="pressKey(3)">3</div>
-        <div class="num-btn" onclick="pressKey(4)">4</div><div class="num-btn" onclick="pressKey(5)">5</div><div class="num-btn" onclick="pressKey(6)">6</div>
-        <div class="num-btn" onclick="pressKey(7)">7</div><div class="num-btn" onclick="pressKey(8)">8</div><div class="num-btn" onclick="pressKey(9)">9</div>
-        <div class="num-btn" style="border:none; background:none;"></div><div class="num-btn" onclick="pressKey(0)">0</div><div class="num-btn" onclick="pressKey('C')"><i class="fas fa-backspace"></i></div>
-    </div>
-    <div id="password-input-container" style="display:none; width:80%; margin-top:20px;">
-        <input type="password" id="text-lock-input" class="auth-input" placeholder="Enter Password">
-        <button class="auth-btn" onclick="checkTextPasscode()">Unlock</button>
-    </div>
-</div>
-
 <div id="app-container">
-    <div id="loading-screen"><div class="spinner"></div><p style="margin-top:15px; font-size:14px; color:var(--text-sub);">Intersecting timelines...</p></div>
+    <!-- LOADING SCREEN -->
+    <div id="loading-screen">
+        <div class="spinner"></div>
+        <p style="margin-top:15px; font-size:14px; color:var(--text-sub);">Intersecting timelines...</p>
+    </div>
 
     <!-- AUTH OVERLAY -->
     <div id="auth-overlay">
@@ -232,11 +318,13 @@
                 <input type="text" id="auth-user" class="auth-input" placeholder="Username (for Sign Up)">
                 <input type="email" id="auth-email" class="auth-input" placeholder="Email">
                 <input type="password" id="auth-pass" class="auth-input" placeholder="Password">
-                <div style="font-size:11px; color:var(--text-sub); margin-bottom:10px; font-weight:700;">SELECT ROLE</div>
+                
+                <div style="font-size:11px; color:var(--text-sub); margin-bottom:10px; font-weight:700; letter-spacing:1px;">SELECT ROLE</div>
                 <div class="role-selector">
                     <div class="role-btn active" id="btn-taki" onclick="setRole('taki')"><i class="fas fa-mars"></i> TAKI</div>
                     <div class="role-btn" id="btn-mitsuha" onclick="setRole('mitsuha')"><i class="fas fa-venus"></i> MITSUHA</div>
                 </div>
+
                 <div class="auth-btn-group">
                     <button class="auth-btn" id="login-btn" onclick="handleLogin()">LOGIN</button>
                     <button class="auth-btn secondary" onclick="handleSignUp()">SIGN UP</button>
@@ -249,7 +337,7 @@
     <!-- MAIN APP -->
     <div class="status-bar">
         <div style="display:flex; align-items:center; gap:10px;">
-            <span id="status-date">Date</span>
+            <span id="status-date">Feb 12</span>
             <div class="pairing-indicator" id="pair-badge"><i class="fas fa-link"></i> Linked</div>
         </div>
         <span id="status-clock">12:00</span>
@@ -275,21 +363,21 @@
         <div id="calendar-grid" class="cal-grid"></div>
     </div>
 
-    <div class="view-section" id="view-gallery" style="padding:10px;">
-        <div class="gallery-add-btn" onclick="openPhotoSourceModal()">+ Add to Gallery</div>
+    <div class="view-section" id="view-gallery">
+        <div class="gallery-add-btn" onclick="openPhotoSourceModal()"><i class="fas fa-plus"></i> Add Photo to Gallery</div>
         <div id="gallery-container" class="gallery-grid"></div>
     </div>
 
     <div class="view-section" id="view-diary" style="padding:25px;">
-        <div style="display:flex; justify-content:space-between; margin-bottom:15px;">
-            <div style="display:flex; gap:8px;">
+        <div style="display:flex; justify-content:space-between; margin-bottom:15px; flex-wrap:wrap; gap:10px;">
+            <div style="display:flex; gap:12px;">
                 <button class="option-btn selected" onclick="setMood(this, 'sun')"><i class="fas fa-sun"></i></button>
                 <button class="option-btn" onclick="setMood(this, 'cloud')"><i class="fas fa-cloud"></i></button>
                 <button class="option-btn" onclick="setMood(this, 'rain')"><i class="fas fa-cloud-rain"></i></button>
             </div>
-            <div style="display:flex; gap:8px;">
+            <div style="display:flex; gap:12px;">
                 <button class="option-btn" id="voice-btn" onclick="toggleRecording()"><i class="fas fa-microphone"></i></button>
-                <button class="option-btn" onclick="openPhotoSourceModal()"><i class="fas fa-camera"></i> Photo</button>
+                <button class="option-btn" onclick="openPhotoSourceModal()"><i class="fas fa-camera"></i></button>
             </div>
         </div>
         <div id="img-preview-box" style="width:100%; height:180px; border-radius:12px; margin-bottom:15px; display:none; position:relative; overflow:hidden;">
@@ -298,49 +386,42 @@
         </div>
         <div id="audio-preview-box" style="margin-bottom:15px; display:none;">
             <div style="padding:10px; background:var(--theme-light); border-radius:10px; display:flex; align-items:center; gap:10px;">
-                <i class="fas fa-play" id="audio-preview-play-icon" style="color:var(--theme-color); cursor:pointer;" onclick="playAudioPreview()"></i>
-                <span style="font-size:12px;">Voice Memo</span>
-                <i class="fas fa-trash" style="margin-left:auto; color:red; cursor:pointer;" onclick="clearAudio()"></i>
+                <i class="fas fa-play" style="color:var(--theme-color); cursor:pointer;" onclick="playAudioPreview()"></i>
+                <span style="font-size:12px;">Voice Note Recorded</span>
+                <i class="fas fa-trash" style="margin-left:auto; color:#FF3B30; cursor:pointer;" onclick="clearAudio()"></i>
             </div>
         </div>
-        <div id="location-tag" style="margin-bottom:10px; font-size:11px; color:var(--theme-color); display:none;"><i class="fas fa-location-dot"></i> <span id="location-text">Fetching...</span></div>
+        <input type="file" id="camera-input" style="display:none;" accept="image/*" capture="environment" onchange="previewEntryImg(this)">
+        <input type="file" id="gallery-input" style="display:none;" accept="image/*" onchange="previewEntryImg(this)">
         <input type="text" id="entry-title" class="auth-input" style="border-radius:8px;" placeholder="Title">
         <textarea id="entry-content" class="auth-input" style="flex:1; border-radius:12px; resize:none;" placeholder="What happened today?"></textarea>
         <button class="auth-btn" style="margin-top:15px; flex:none;" onclick="saveEntry()">SAVE TO TIMELINE</button>
     </div>
 
     <div class="view-section" id="view-settings">
-        <div style="text-align:center; margin-bottom:30px;">
+        <div class="settings-section" style="text-align:center;">
             <div class="pfp-container" onclick="document.getElementById('pfp-input').click()"><img id="user-pfp" src="https://cdn-icons-png.flaticon.com/512/149/149071.png"></div>
             <h2 id="settings-username">Username</h2>
-            <p id="settings-email" style="color:var(--text-sub); font-size:14px;">email@example.com</p>
+            <p id="settings-email" style="color:var(--text-sub); font-size:14px; margin-bottom:10px;">email@example.com</p>
         </div>
         <input type="file" id="pfp-input" style="display:none;" accept="image/*" onchange="updatePfp(this)">
 
         <div class="settings-section">
-            <h3 style="font-size:12px; color:var(--theme-color); margin-bottom:10px; font-weight:700;">SECURITY</h3>
+            <h3 class="settings-title">Security</h3>
             <div class="settings-item">
-                <span>Lock Type</span>
-                <select id="lock-type-selector" class="auth-input" style="width:auto; padding:5px; margin:0;" onchange="updateLockUI()">
-                    <option value="none">None</option>
-                    <option value="pin">4-Digit PIN</option>
-                    <option value="password">Password</option>
-                </select>
+                <span>App Lock (PIN)</span>
+                <input type="text" id="lock-pin-input" class="auth-input" placeholder="Set 4-digit PIN" style="width:120px; margin:0; padding:8px;">
+                <button class="auth-btn" style="flex:none; width:auto; padding:8px 15px;" onclick="setAppLock()">Set</button>
             </div>
-            <div id="lock-input-area" class="settings-item" style="display:none;">
-                <input type="text" id="new-lock-val" class="auth-input" placeholder="Set PIN/Passcode" style="margin:0; padding:8px;">
-                <button class="auth-btn" style="flex:none; width:auto; padding:8px 15px;" onclick="setAppLock()">SAVE</button>
-            </div>
-            <div class="settings-item"><span>Notifications</span><button class="auth-btn secondary" style="flex:none; width:auto; padding:8px 15px;" onclick="enableNotifications()">ENABLE</button></div>
         </div>
 
         <div class="settings-section">
-            <h3 style="font-size:12px; color:var(--theme-color); margin-bottom:10px; font-weight:700;">CONNECTION</h3>
+            <h3 class="settings-title">Connection</h3>
             <div id="connect-section"></div>
         </div>
 
         <div class="settings-section">
-            <h3 style="font-size:12px; color:var(--theme-color); margin-bottom:10px; font-weight:700;">PREFERENCES</h3>
+            <h3 class="settings-title">Preferences</h3>
             <div class="settings-item"><span>Dark Mode</span><input type="checkbox" id="dark-mode-toggle" onchange="toggleDarkMode(this.checked)"></div>
             <div class="settings-item"><span>Background Music</span><input type="checkbox" id="music-toggle" onchange="toggleMusic(this.checked)"></div>
             <div class="settings-item" onclick="logout()" style="color:#FF3B30; cursor:pointer;"><span>Log Out</span><i class="fas fa-sign-out-alt"></i></div>
@@ -356,30 +437,28 @@
     </div>
 </div>
 
-<!-- PHOTO MODAL -->
 <div class="source-overlay" id="photo-overlay" onclick="closePhotoSourceModal()"></div>
 <div class="photo-source-modal" id="photo-modal">
+    <div style="text-align:center; font-weight:700; color:var(--text-sub); margin-bottom:5px;">ADD PHOTO</div>
     <button class="source-btn" onclick="triggerInput('camera')"><i class="fas fa-camera"></i> Take Photo</button>
-    <button class="source-btn" onclick="triggerInput('gallery')"><i class="fas fa-image"></i> Choose Gallery</button>
-    <button class="source-btn" onclick="closePhotoSourceModal()" style="color:red;">Cancel</button>
+    <button class="source-btn" onclick="triggerInput('gallery')"><i class="fas fa-image"></i> Choose from Gallery</button>
+    <button class="source-btn" onclick="closePhotoSourceModal()" style="color:#FF3B30;">Cancel</button>
 </div>
-<input type="file" id="camera-input" style="display:none;" accept="image/*" capture="environment" onchange="previewEntryImg(this)">
-<input type="file" id="gallery-input" style="display:none;" accept="image/*" onchange="previewEntryImg(this)">
 
-<!-- READ ENTRY MODAL -->
 <div class="modal-overlay" id="read-modal">
     <div class="paper-sheet">
-        <div class="sheet-header"><button onclick="deleteCurrentEntry()" style="color:red; border:none; background:none;"><i class="fas fa-trash"></i></button><span id="m-date"></span><button onclick="closeModal()" style="border:none; background:none; font-weight:bold; color:var(--theme-color);">Done</button></div>
+        <div class="sheet-header"><button style="color:#FF3B30; border:none; background:none;" onclick="deleteCurrentEntry()"><i class="fas fa-trash"></i></button><span id="m-date">Date</span><button style="color:var(--theme-color); font-weight:700; border:none; background:none;" onclick="closeModal()">Done</button></div>
         <div class="sheet-body">
-            <img id="m-img" style="width:100%; border-radius:12px; margin-bottom:15px; display:none;">
-            <div id="m-audio-container" style="display:none; margin-bottom:15px;"></div>
-            <h2 id="m-title" style="margin-bottom:10px; color:var(--theme-color);"></h2>
-            <div id="m-text" style="white-space:pre-wrap;"></div>
+            <img id="m-img" style="width:100%; border-radius:12px; margin-bottom:20px; display:none;">
+            <div id="m-audio" style="display:none; margin-bottom:20px;"></div>
+            <h2 id="m-title" style="margin-bottom:15px; color:var(--theme-color);">Title</h2>
+            <div id="m-text" style="white-space:pre-wrap;">Content...</div>
         </div>
     </div>
 </div>
 
-<div id="ios-popup" class="ios-popup"><h3 id="popup-title"></h3><p id="popup-msg"></p><div class="popup-btn" onclick="closePopup()">OK</div></div>
+<div id="ios-popup" class="ios-popup"><h3 id="popup-title">Notification</h3><p id="popup-msg"></p><div class="popup-btn" onclick="closePopup()">OK</div></div>
+
 <audio id="bg-music" loop src="https://www.chosic.com/wp-content/uploads/2021/07/Rainy-Day-Anime-Style.mp3"></audio>
 
 <script>
@@ -396,34 +475,66 @@
     firebase.initializeApp(firebaseConfig);
     const auth = firebase.auth();
     const db = firebase.firestore();
-    db.enablePersistence().catch(()=>{});
+    db.enablePersistence().catch(() => {});
     auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL);
 
-    let currentUser = null, selectedRole = 'taki', currentViewRole = 'taki', entryImageData = null, entryAudioData = null, currentMood = 'sun', currentEntries = [], openEntryId = null, isGalleryMode = false;
-    let mediaRecorder, audioChunks = [], isRecording = false, currentPin = "";
+    let currentUser = null, selectedRole = 'taki', currentViewRole = 'taki', entryImageData = null, entryAudioData = null, currentMood = 'sun', currentEntries = [], openEntryId = null, mediaRecorder, audioChunks = [], isRecording = false, currentPin = "", isGalleryMode = false;
 
     function getIST() { return new Date(new Date().getTime() + (5.5 * 60 * 60 * 1000)); }
     function tearPage(el) { el.classList.add('torn-off'); setTimeout(() => document.getElementById('tear-off-overlay').style.display='none', 800); }
 
-    // --- AUTH ---
-    auth.onAuthStateChanged(user => {
-        const l = document.getElementById('loading-screen'), a = document.getElementById('auth-overlay');
-        const lock = localStorage.getItem('app-lock-val');
-        if (user) {
-            db.collection('users').doc(user.uid).get().then(doc => {
-                if (doc.exists) {
-                    currentUser = doc.data(); currentUser.uid = user.uid;
-                    if(currentUser.role) currentUser.role = currentUser.role.toLowerCase();
-                    l.style.display = 'none'; a.style.display = 'none';
-                    if(lock) showLockScreen();
-                    checkSwap(); renderCalendar(); fetchLocation();
-                } else if(user.isAnonymous) {
-                    db.collection('users').doc(user.uid).set({username:"Guest Voyager", role:selectedRole, uid:user.uid, isGuest:true, coupleId:null}).then(()=>location.reload());
-                } else { l.style.display = 'none'; a.style.display = 'flex'; }
-            });
-        } else { l.style.display = 'none'; a.style.display = 'flex'; a.style.opacity = '1'; }
-    });
+    // --- AUDIO LOGIC ---
+    async function toggleRecording() {
+        if (!isRecording) {
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                mediaRecorder = new MediaRecorder(stream, { mimeType: 'audio/webm;codecs=opus', audioBitsPerSecond: 64000 });
+                audioChunks = [];
+                mediaRecorder.ondataavailable = e => audioChunks.push(e.data);
+                mediaRecorder.onstop = () => {
+                    const blob = new Blob(audioChunks, { type: 'audio/webm' });
+                    const r = new FileReader(); r.onloadend = () => { entryAudioData = r.result; document.getElementById('audio-preview-box').style.display = 'block'; };
+                    r.readAsDataURL(blob);
+                    stream.getTracks().forEach(t => t.stop());
+                };
+                mediaRecorder.start(); isRecording = true; document.getElementById('voice-btn').classList.add('recording');
+            } catch (err) { alert("Microphone access denied."); }
+        } else {
+            mediaRecorder.stop(); isRecording = false; document.getElementById('voice-btn').classList.remove('recording');
+        }
+    }
+    function clearAudio() { entryAudioData = null; document.getElementById('audio-preview-box').style.display = 'none'; }
+    function playAudioPreview() { if(entryAudioData) new Audio(entryAudioData).play(); }
 
+    // --- PHOTO SOURCE MODAL ---
+    function openPhotoSourceModal() { document.getElementById('photo-overlay').classList.add('active'); document.getElementById('photo-modal').classList.add('active'); }
+    function closePhotoSourceModal() { document.getElementById('photo-overlay').classList.remove('active'); document.getElementById('photo-modal').classList.remove('active'); }
+    function triggerInput(type) { 
+        closePhotoSourceModal(); 
+        isGalleryMode = (document.getElementById('view-gallery').classList.contains('active'));
+        if(type === 'camera') document.getElementById('camera-input').click(); 
+        else document.getElementById('gallery-input').click(); 
+    }
+
+    // --- IMAGE COMPRESSION ---
+    async function compressImage(base64Str, maxWidth = 1200, maxHeight = 1200, quality = 0.7) {
+        return new Promise((resolve) => {
+            const img = new Image();
+            img.src = base64Str;
+            img.onload = () => {
+                const canvas = document.createElement('canvas');
+                let width = img.width, height = img.height;
+                if (width > height) { if (width > maxWidth) { height *= maxWidth / width; width = maxWidth; } }
+                else { if (height > maxHeight) { width *= maxHeight / height; height = maxHeight; } }
+                canvas.width = width; canvas.height = height;
+                const ctx = canvas.getContext('2d');
+                ctx.drawImage(img, 0, 0, width, height);
+                resolve(canvas.toDataURL('image/jpeg', quality));
+            };
+        });
+    }
+
+    // --- AUTH ---
     function handleLogin() {
         const e = document.getElementById('auth-email').value, p = document.getElementById('auth-pass').value, b = document.getElementById('login-btn');
         if(!e || !p) return alert("Email/Password required");
@@ -437,117 +548,120 @@
     }
     function guestSignIn() { if(window.location.protocol === 'file:') return alert("Guest Mode requires a server"); auth.signInAnonymously().catch(err => alert(err.message)); }
 
-    // --- NAVIGATION ---
-    function switchTab(name) {
-        document.querySelectorAll('.view-section').forEach(v => { v.style.display = 'none'; v.classList.remove('active'); });
-        const target = document.getElementById(`view-${name}`); if(target) { target.style.display = 'flex'; target.classList.add('active'); }
-        
-        document.querySelectorAll('.bar-icon').forEach(i => i.classList.remove('active'));
-        const bottomTab = document.getElementById(`tab-${name}`); if(bottomTab) bottomTab.classList.add('active');
+    auth.onAuthStateChanged(user => {
+        const l = document.getElementById('loading-screen'), a = document.getElementById('auth-overlay');
+        if (user) {
+            const fetchProfile = (retry = 0) => {
+                db.collection('users').doc(user.uid).get().then(doc => {
+                    if (doc.exists) {
+                        currentUser = doc.data(); currentUser.uid = user.uid;
+                        if(currentUser.role) currentUser.role = currentUser.role.toLowerCase();
+                        l.style.display = 'none'; a.style.display = 'none';
+                        checkSwap(); renderCalendar();
+                    } else if (user.isAnonymous) {
+                        db.collection('users').doc(user.uid).set({ username: "Guest Voyager", role: selectedRole, uid: user.uid, isGuest: true, coupleId: null }).then(() => fetchProfile());
+                    } else if (retry < 15) setTimeout(() => fetchProfile(retry + 1), 1000);
+                    else { l.style.display = 'none'; a.style.display = 'flex'; }
+                });
+            };
+            fetchProfile();
+        } else { l.style.display = 'none'; a.style.display = 'flex'; a.style.opacity = '1'; }
+    });
 
-        document.querySelectorAll('.segment').forEach(s => s.classList.remove('active'));
-        const segIdx = {'entries':'seg-entries', 'calendar':'seg-calendar', 'diary':'seg-diary'}[name];
-        if(segIdx) document.getElementById(segIdx).classList.add('active');
+    // --- PAIRING ---
+    function generateInviteCode() { const c = Math.random().toString(36).substr(2, 6).toUpperCase(); db.collection('users').doc(currentUser.uid).update({ coupleId: c }).then(() => { currentUser.coupleId = c; renderConnectionUI(); showPopup("Code Generated", "Share it with your partner."); }); }
+    function connectPartner() { const c = document.getElementById('partner-code-input').value.trim().toUpperCase(); if (c.length !== 6) return alert("Enter 6-char code."); db.collection('users').doc(currentUser.uid).update({ coupleId: c }).then(() => { currentUser.coupleId = c; renderConnectionUI(); showPopup("Connected!", "Timeline synchronized."); loadEntries(); }); }
+    function renderConnectionUI() { const container = document.getElementById('connect-section'); if (!currentUser.coupleId) { container.innerHTML = `<p style="font-size:14px; color:var(--text-sub); margin-bottom:15px;">Connect with your partner.</p><button class="auth-btn" style="margin-bottom:15px;" onclick="generateInviteCode()">INVITE PARTNER</button><div style="display:flex; gap:10px;"><input type="text" id="partner-code-input" class="auth-input" placeholder="Code" style="margin-bottom:0;"><button class="auth-btn secondary" style="width:auto; padding:0 20px;" onclick="connectPartner()">JOIN</button></div>`; } else { container.innerHTML = `<p style="font-size:12px; color:var(--text-sub);">Your Connection ID:</p><div class="code-box"><span>${currentUser.coupleId}</span><i class="far fa-copy" onclick="copyCode('${currentUser.coupleId}')" style="cursor:pointer; color:var(--theme-color);"></i></div>`; } }
+    function copyCode(c) { navigator.clipboard.writeText(c).then(() => showPopup("Copied", "Code copied.")); }
 
-        if(name === 'entries') loadEntries();
-        if(name === 'calendar') renderCalendar();
-        if(name === 'gallery') loadGallery();
-        if(name === 'settings' && currentUser) {
-            document.getElementById('settings-username').innerText = currentUser.username;
-            document.getElementById('settings-email').innerText = currentUser.email;
-            if(currentUser.pfp) document.getElementById('user-pfp').src = currentUser.pfp;
-            renderConnectionUI();
-        }
-    }
-
-    // --- LOCK SYSTEM ---
-    function showLockScreen() {
-        const type = localStorage.getItem('app-lock-type');
-        document.getElementById('lock-screen').style.display = 'flex';
-        if(type === 'pin') {
-            document.getElementById('numpad').style.display = 'grid';
-            document.getElementById('pin-dots').style.display = 'flex';
-            document.getElementById('password-input-container').style.display = 'none';
-        } else {
-            document.getElementById('numpad').style.display = 'none';
-            document.getElementById('pin-dots').style.display = 'none';
-            document.getElementById('password-input-container').style.display = 'block';
-        }
-    }
-    function pressKey(key) {
-        if(key === 'C') { currentPin = ""; } else { currentPin += key; }
-        const dots = document.getElementById('pin-dots').children;
-        for(let i=0; i<4; i++) dots[i].classList.toggle('filled', i < currentPin.length);
-        if(currentPin.length === 4) {
-            if(currentPin === localStorage.getItem('app-lock-val')) { document.getElementById('lock-screen').style.display = 'none'; currentPin = ""; }
-            else { alert("Wrong PIN"); currentPin = ""; updatePinDots(); }
-        }
-    }
-    function checkTextPasscode() {
-        const val = document.getElementById('text-lock-input').value;
-        if(val === localStorage.getItem('app-lock-val')) { document.getElementById('lock-screen').style.display = 'none'; }
-        else alert("Wrong Password");
-    }
-    function updateLockUI() { const type = document.getElementById('lock-type-selector').value; document.getElementById('lock-input-area').style.display = type === 'none' ? 'none' : 'flex'; }
-    function setAppLock() {
-        const type = document.getElementById('lock-type-selector').value;
-        const val = document.getElementById('new-lock-val').value;
-        if(type === 'pin' && val.length !== 4) return alert("Enter 4 digits");
-        if(type === 'none') { localStorage.removeItem('app-lock-val'); } else { localStorage.setItem('app-lock-type', type); localStorage.setItem('app-lock-val', val); }
-        alert("Lock updated");
-    }
-
-    // --- DIARY LOGIC ---
-    function saveEntry() {
-        if(!currentUser.coupleId) return alert("Link partner first");
+    // --- LOGIC ---
+    async function saveEntry() {
+        if (!currentUser.coupleId) return alert("Connect with your partner first.");
         const t = document.getElementById('entry-title').value, c = document.getElementById('entry-content').value;
         const isQuickGallery = isGalleryMode;
-        if(!t && !entryImageData) return alert("Empty entry");
+        if (!t && !entryImageData) return alert("Add content or photo!");
         
-        showPopup("Saving...", "Musubi connecting...");
+        showPopup("Saving...", "Connecting timeline...");
+        const compressedImg = entryImageData ? await compressImage(entryImageData) : null;
         const ist = getIST();
         db.collection('entries').add({ 
-            author_uid: currentUser.uid, coupleId: currentUser.coupleId, role: currentUser.role, 
-            title: t || (isQuickGallery ? "Photo" : "Memory"), content: c, 
-            image: entryImageData, audio: entryAudioData, mood: currentMood, timestamp: ist.getTime(), 
-            day: ist.getUTCDate(), month: ist.toLocaleString('default', { month: 'short' }),
-            isGalleryOnly: isQuickGallery
+            author_uid: currentUser.uid, coupleId: currentUser.coupleId, role: currentUser.role.toLowerCase(), 
+            title: t || (isQuickGallery ? "Photo Memory" : "Untitled"), content: c || "", 
+            image: compressedImg, audio: entryAudioData || null, mood: currentMood, timestamp: ist.getTime(), 
+            day: ist.getUTCDate(), month: ist.toLocaleString('default', { month: 'short' }), isGalleryOnly: isQuickGallery
         }).then(() => {
             document.getElementById('entry-title').value = ''; document.getElementById('entry-content').value = '';
             document.getElementById('img-preview-box').style.display = 'none'; entryImageData = null; clearAudio();
             isGalleryMode = false; switchTab(isQuickGallery ? 'gallery' : 'entries');
-            showPopup("Saved", "Timeline updated."); setTimeout(closePopup, 2000);
-        }).catch(err => alert(err.message));
+            showPopup("Saved", "Memory woven into Musubi."); setTimeout(closePopup, 2000);
+        }).catch(err => alert("Firestore Error: " + err.message));
     }
 
     function loadEntries() {
         const list = document.getElementById('entry-list');
-        if(!currentUser.coupleId) { list.innerHTML = '<div style="padding:40px; text-align:center">Link in Settings</div>'; return; }
+        if (!currentUser || !currentUser.coupleId) { document.getElementById('pair-badge').classList.remove('active'); list.innerHTML = '<div style="padding:40px; text-align:center; color:#fff;">Connect with your partner in Settings.</div>'; return; }
         document.getElementById('pair-badge').classList.add('active');
-        db.collection('entries').where('coupleId','==',currentUser.coupleId).where('role','==',currentViewRole).orderBy('timestamp','desc').limit(20).onSnapshot(snap => {
-            list.innerHTML = '';
+        db.collection('entries').where('coupleId', '==', currentUser.coupleId).where('role', '==', currentViewRole.toLowerCase()).orderBy('timestamp', 'desc').limit(20).onSnapshot(snap => {
+            list.innerHTML = ''; currentEntries = [];
             snap.forEach(doc => {
-                const d = doc.data(); if(d.isGalleryOnly) return;
-                const hasImg = d.image ? '<i class="fas fa-image"></i>' : '', hasAud = d.audio ? '<i class="fas fa-volume-up"></i>' : '';
-                list.innerHTML += `<div class="entry-item" onclick="openEntry('${doc.id}')"><div class="entry-row"><div class="date-col"><span class="date-num">${d.day}</span><span class="date-day">${d.month}</span></div><div class="content-col"><div class="entry-meta">${hasImg} ${hasAud} <i class="fas fa-${d.mood}"></i></div><div class="entry-title">${d.title}</div><div class="entry-excerpt">${d.content}</div></div></div></div>`;
+                const data = doc.data(); data.id = doc.id;
+                if (!data.isGalleryOnly) {
+                    currentEntries.push(data);
+                    list.innerHTML += `<div class="entry-item" onclick="openEntry('${doc.id}')"><div class="entry-row"><div class="date-col"><span class="date-num">${data.day}</span><span class="date-day">${data.month}</span></div><div class="content-col"><div class="entry-meta">${data.image ? '<i class="fas fa-image"></i>' : ''} ${data.audio ? '<i class="fas fa-volume-up"></i>' : ''} <i class="fas fa-${data.mood || 'sun'}"></i></div><div class="entry-title">${data.title}</div><div class="entry-excerpt">${data.content}</div></div></div></div>`;
+                }
             });
+            if(list.innerHTML === '') list.innerHTML = '<p style="text-align:center; padding:40px; color:#fff;">No diary entries yet.</p>';
         });
     }
 
-    function loadGallery() {
-        const g = document.getElementById('gallery-container'); g.innerHTML = '';
-        db.collection('entries').where('coupleId','==',currentUser.coupleId).orderBy('timestamp','desc').get().then(snap => {
-            snap.forEach(doc => { const d = doc.data(); if(d.image) g.innerHTML += `<div class="gallery-item" onclick="openEntry('${doc.id}')"><img src="${d.image}"></div>`; });
-        });
+    function renderCalendar() {
+        const grid = document.getElementById('calendar-grid'), ist = getIST(), year = ist.getUTCFullYear(), month = ist.getUTCMonth();
+        document.getElementById('cal-month').innerText = ist.toLocaleString('default', { month: 'long', year: 'numeric' });
+        grid.innerHTML = ''; ['S','M','T','W','T','F','S'].forEach(d => grid.innerHTML += `<div style="font-weight:700; color:var(--text-sub); font-size:12px;">${d}</div>`);
+        for(let i=0; i<new Date(year, month, 1).getDay(); i++) grid.innerHTML += '<div></div>';
+        if (currentUser && currentUser.coupleId) {
+            db.collection('entries').where('coupleId', '==', currentUser.coupleId).where('role', '==', currentViewRole.toLowerCase()).get().then(snap => {
+                const days = snap.docs.map(doc => doc.data().day);
+                for(let d=1; d<=new Date(year, month + 1, 0).getDate(); d++) grid.innerHTML += `<div class="cal-cell ${days.includes(d)?'has-entry':''} ${d===ist.getUTCDate()?'is-today':''}">${d}</div>`;
+            });
+        }
     }
 
-    // --- HELPERS ---
+    function switchTab(name) {
+        document.querySelectorAll('.view-section').forEach(v => { v.style.display = 'none'; v.classList.remove('active'); });
+        const target = document.getElementById(`view-${name}`); if(target) { target.style.display = 'flex'; target.classList.add('active'); }
+        document.querySelectorAll('.bar-icon').forEach(i => i.classList.remove('active')); document.getElementById(`tab-${name}`).classList.add('active');
+        const segIdx = {'entries':0, 'calendar':1, 'diary':2}[name];
+        if(segIdx !== undefined) { document.querySelectorAll('.segment').forEach(s => s.classList.remove('active')); document.querySelectorAll('.segment')[segIdx].classList.add('active'); }
+        if(name === 'entries') loadEntries(); if(name === 'calendar') renderCalendar(); if(name === 'gallery') {
+            const g = document.getElementById('gallery-container'); g.innerHTML = '';
+            if(!currentUser.coupleId) { g.innerHTML = '<p style="text-align:center; padding:20px; width:100%; color:var(--text-sub);">Connect with partner.</p>'; return; }
+            db.collection('entries').where('coupleId', '==', currentUser.coupleId).orderBy('timestamp', 'desc').get().then(snap => {
+                snap.forEach(doc => { if(doc.data().image) g.innerHTML += `<div class="gallery-item" onclick="openEntry('${doc.id}')"><img src="${doc.data().image}"></div>`; });
+            });
+        }
+        if(name === 'settings' && currentUser) { document.getElementById('settings-username').innerText = currentUser.username; document.getElementById('settings-email').innerText = currentUser.email; if(currentUser.pfp) document.getElementById('user-pfp').src = currentUser.pfp; renderConnectionUI(); }
+    }
+
     function checkSwap() {
-        const ist = getIST(); currentViewRole = (ist.getUTCDate() % 2 === 0) ? currentUser.role : (currentUser.role === 'taki' ? 'mitsuha' : 'taki');
+        if(!currentUser) return;
+        const ist = getIST(), isEven = (ist.getUTCDate() % 2 === 0);
+        currentViewRole = isEven ? currentUser.role : (currentUser.role === 'taki' ? 'mitsuha' : 'taki');
         document.documentElement.setAttribute('data-theme', currentViewRole === 'mitsuha' ? 'mitsuha' : '');
         document.getElementById('app-title-text').innerText = `${currentViewRole.charAt(0).toUpperCase() + currentViewRole.slice(1)}'s Diary`;
-        document.getElementById('tear-month').style.background = (currentViewRole === 'mitsuha') ? '#FF6B6B' : '#5D8CAE';
+        const tm = document.getElementById('tear-month'); tm.style.background = (currentViewRole === 'mitsuha') ? '#FF6B6B' : '#5D8CAE';
         loadEntries();
+    }
+
+    function openEntry(id) {
+        db.collection('entries').doc(id).get().then(doc => {
+            const e = doc.data(); openEntryId = id;
+            document.getElementById('m-title').innerText = e.title; document.getElementById('m-text').innerText = e.content;
+            document.getElementById('m-date').innerText = `${e.month} ${e.day}`;
+            const img = document.getElementById('m-img'); if(e.image) { img.src = e.image; img.style.display = 'block'; } else img.style.display = 'none';
+            const aud = document.getElementById('m-audio'); if(e.audio) { aud.innerHTML = `<button class="auth-btn secondary" onclick="toggleAudioPlay(this, '${e.audio}')"><i class="fas fa-play"></i> Voice Memo</button>`; aud.style.display = 'block'; } else aud.style.display = 'none';
+            document.getElementById('read-modal').style.display = 'flex';
+        });
     }
     function toggleAudioPlay(btn, url) {
         let a = document.getElementById('global-player'); if(!a) { a = new Audio(); a.id = 'global-player'; document.body.appendChild(a); }
@@ -555,61 +669,27 @@
         if(a.src === url && !a.paused) { a.pause(); icon.className = 'fas fa-play'; }
         else { a.src = url; a.play(); icon.className = 'fas fa-pause'; a.onended = () => icon.className = 'fas fa-play'; }
     }
-    function openEntry(id) {
-        db.collection('entries').doc(id).get().then(doc => {
-            const e = doc.data(); openEntryId = id;
-            document.getElementById('m-title').innerText = e.title; document.getElementById('m-text').innerText = e.content;
-            document.getElementById('m-date').innerText = `${e.month} ${e.day}`;
-            const img = document.getElementById('m-img'); if(e.image) { img.src = e.image; img.style.display = 'block'; } else img.style.display = 'none';
-            const aud = document.getElementById('m-audio-container');
-            if(e.audio) { aud.innerHTML = `<button class="auth-btn secondary" onclick="toggleAudioPlay(this, '${e.audio}')"><i class="fas fa-play"></i> Voice Memo</button>`; aud.style.display = 'block'; } else aud.style.display = 'none';
-            document.getElementById('read-modal').style.display = 'flex';
-        });
-    }
-    function closeModal() { document.getElementById('read-modal').style.display = 'none'; }
-    function deleteCurrentEntry() { if(confirm("Delete?") && openEntryId) db.collection('entries').doc(openEntryId).delete().then(()=>closeModal()); }
-    function previewEntryImg(i) { if(i.files[0]) { const r = new FileReader(); r.onload=e=>{ entryImageData=e.target.result; if(isGalleryMode) saveEntry(); else { document.getElementById('entry-img-preview').src=entryImageData; document.getElementById('img-preview-box').style.display='block'; } }; r.readAsDataURL(i.files[0]); } }
+    
+    function setRole(r) { selectedRole = r; document.getElementById('btn-taki').classList.toggle('active', r === 'taki'); document.getElementById('btn-mitsuha').classList.toggle('active', r === 'mitsuha'); }
+    function setMood(b, m) { currentMood = m; document.querySelectorAll('.option-btn').forEach(btn => btn.classList.remove('selected')); b.classList.add('selected'); }
+    function previewEntryImg(i) { if (i.files && i.files[0]) { const r = new FileReader(); r.onload = e => { entryImageData = e.target.result; if(isGalleryMode) saveEntry(); else { document.getElementById('entry-img-preview').src = entryImageData; document.getElementById('entry-img-preview').style.display = 'block'; document.getElementById('img-preview-box').style.display = 'block'; } }; r.readAsDataURL(i.files[0]); } }
     function clearEntryImg() { entryImageData = null; document.getElementById('img-preview-box').style.display = 'none'; }
+    async function updatePfp(i) { if (i.files && i.files[0]) { const r = new FileReader(); r.onload = async e => { const b = await compressImage(e.target.result, 400, 400); document.getElementById('user-pfp').src = b; db.collection('users').doc(currentUser.uid).update({ pfp: b }); }; r.readAsDataURL(i.files[0]); } }
     function toggleDarkMode(d) { document.documentElement.setAttribute('data-dark', d); localStorage.setItem('diary-dark-mode', d); }
     function toggleMusic(on) { const m = document.getElementById('bg-music'); on ? m.play() : m.pause(); }
-    function setRole(r) { selectedRole = r; document.getElementById('btn-taki').classList.toggle('active', r==='taki'); document.getElementById('btn-mitsuha').classList.toggle('active', r==='mitsuha'); }
-    function setMood(b, m) { currentMood = m; document.querySelectorAll('.option-btn').forEach(btn => btn.classList.remove('selected')); b.classList.add('selected'); }
     function logout() { auth.signOut().then(() => location.reload()); }
-    function showPopup(t,m) { document.getElementById('popup-title').innerText=t; document.getElementById('popup-msg').innerText=m; document.getElementById('ios-popup').classList.add('show'); }
+    function showPopup(t, m) { document.getElementById('popup-title').innerText = t; document.getElementById('popup-msg').innerText = m; document.getElementById('ios-popup').classList.add('show'); }
     function closePopup() { document.getElementById('ios-popup').classList.remove('show'); }
-    function openPhotoSourceModal() { document.getElementById('photo-overlay').classList.add('active'); document.getElementById('photo-modal').classList.add('active'); }
-    function closePhotoSourceModal() { document.getElementById('photo-overlay').classList.remove('active'); document.getElementById('photo-modal').classList.remove('active'); }
-    function triggerInput(t) { closePhotoSourceModal(); isGalleryMode = (document.getElementById('view-gallery').classList.contains('active')); document.getElementById(t==='camera'?'camera-input':'gallery-input').click(); }
-    function generateInviteCode() { const c = Math.random().toString(36).substr(2, 6).toUpperCase(); db.collection('users').doc(currentUser.uid).update({coupleId:c}).then(()=>{ currentUser.coupleId=c; renderConnectionUI(); alert("Code: "+c); }); }
-    function connectPartner() { const c = document.getElementById('partner-code-input').value.toUpperCase(); db.collection('users').doc(currentUser.uid).update({coupleId:c}).then(()=>{ currentUser.coupleId=c; renderConnectionUI(); alert("Connected"); loadEntries(); }); }
-    function renderConnectionUI() { const div = document.getElementById('connect-section'); if(currentUser.coupleId) div.innerHTML = `ID: ${currentUser.coupleId}`; else div.innerHTML = `<button class="auth-btn" onclick="generateInviteCode()">Invite</button><input id="partner-code-input" class="auth-input"><button class="auth-btn secondary" onclick="connectPartner()">Join</button>`; }
-    function enableNotifications() { Notification.requestPermission().then(p => { if(p === 'granted') alert("Enabled!"); }); }
+    function closeModal() { document.getElementById('read-modal').style.display = 'none'; }
+    function deleteCurrentEntry() { if(confirm("Delete this memory?") && openEntryId) db.collection('entries').doc(openEntryId).delete().then(() => { closeModal(); switchTab('entries'); }); }
 
-    // --- PULL REFRESH ---
-    let ts = 0; const ev = document.getElementById('view-entries');
-    ev.addEventListener('touchstart', e => ts = e.touches[0].pageY);
-    ev.addEventListener('touchmove', e => { let d = e.touches[0].pageY - ts; if (ev.scrollTop === 0 && d > 0) document.getElementById('pull-refresh').style.height = Math.min(d, 60) + 'px'; });
-    ev.addEventListener('touchend', () => { if (parseInt(document.getElementById('pull-refresh').style.height) >= 60) { loadEntries(); renderCalendar(); } document.getElementById('pull-refresh').style.height = '0px'; });
+    setInterval(() => {
+        const ist = getIST(), next = new Date(ist); next.setUTCHours(24, 0, 0, 0);
+        const diff = next - ist, h = Math.floor(diff / 3600000), m = Math.floor((diff % 3600000) / 60000), s = Math.floor((diff % 60000) / 1000);
+        document.getElementById('status-clock').innerText = ist.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: false });
+        document.getElementById('swap-timer').innerText = `Swap in ${h}h ${m}m ${s}s`;
+    }, 1000);
 
-    // --- CALENDAR ---
-    function renderCalendar() {
-        const grid = document.getElementById('calendar-grid'), ist = getIST(), y = ist.getUTCFullYear(), m = ist.getUTCMonth();
-        document.getElementById('cal-month').innerText = ist.toLocaleString('default', { month: 'long', year: 'numeric' });
-        grid.innerHTML = ''; ['S','M','T','W','T','F','S'].forEach(d => grid.innerHTML += `<div style="font-weight:700; color:var(--text-sub); font-size:12px;">${d}</div>`);
-        for(let i=0; i<new Date(y, m, 1).getDay(); i++) grid.innerHTML += '<div></div>';
-        if (!currentUser || !currentUser.coupleId) return;
-        db.collection('entries').where('coupleId', '==', currentUser.coupleId).where('role', '==', currentViewRole.toLowerCase()).get().then(snap => {
-            const days = snap.docs.map(doc => doc.data().day);
-            for(let d=1; d<=new Date(y, m + 1, 0).getDate(); d++) grid.innerHTML += `<div class="cal-cell ${days.includes(d)?'has-entry':''} ${d===ist.getUTCDate()?'is-today':''}">${d}</div>`;
-        });
-    }
-
-    // Init IST
-    const now = getIST();
-    document.getElementById('tear-date').innerText = now.getUTCDate();
-    document.getElementById('tear-month').innerText = now.toLocaleString('default', { month: 'long' }).toUpperCase();
-    document.getElementById('tear-day').innerText = now.toLocaleString('default', { weekday: 'long' });
-    document.getElementById('status-date').innerText = now.toLocaleString('default', { month: 'short', day: 'numeric' });
     if(localStorage.getItem('diary-dark-mode') === 'true') { document.documentElement.setAttribute('data-dark', 'true'); document.getElementById('dark-mode-toggle').checked = true; }
 </script>
 </body>
