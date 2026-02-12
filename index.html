@@ -92,6 +92,19 @@
             100% { transform: rotate(20deg) translateY(120vh); opacity: 0; }
         }
 
+        /* --- LOADING SCREEN --- */
+        #loading-screen {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background: var(--bg-app); z-index: 9000;
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+        }
+        .spinner {
+            width: 40px; height: 40px; border: 4px solid var(--border-color);
+            border-top: 4px solid var(--theme-color); border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
         /* --- AUTH SCREEN --- */
         #auth-overlay {
             position: absolute; top: 0; left: 0; width: 100%; height: 100%;
@@ -162,7 +175,7 @@
         .entry-item {
             display: flex; flex-direction: column; padding: 15px 18px; background: rgba(255, 255, 255, 0.85);
             backdrop-filter: blur(10px); border-bottom: 1px solid rgba(0,0,0,0.05);
-            margin-bottom: 1px;
+            margin-bottom: 1px; cursor: pointer;
         }
         [data-dark="true"] .entry-item { background: rgba(30, 30, 30, 0.85); }
         
@@ -173,15 +186,37 @@
         
         .content-col { flex: 1; min-width: 0; }
         .entry-title { font-size: 17px; font-weight: 700; color: var(--text-main); }
-        .entry-excerpt { font-size: 13px; color: var(--text-sub); white-space: pre-wrap; word-break: break-word; }
+        .entry-excerpt { font-size: 13px; color: var(--text-sub); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
         .entry-img-attached { width: 100%; height: auto; max-height: 250px; object-fit: cover; border-radius: 12px; margin-top: 12px; opacity: 0; transition: opacity 0.5s; }
         .entry-img-attached.loaded { opacity: 1; }
 
         /* CALENDAR */
         .cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 8px; text-align: center; width: 100%; }
-        .cal-cell { padding: 10px; border-radius: 50%; font-size: 14px; position: relative; transition: 0.2s; cursor: pointer; }
-        .cal-cell.has-entry { background: var(--theme-light); color: var(--theme-color); font-weight: 700; }
-        .cal-cell.is-today { border: 2px solid var(--theme-color); }
+        .cal-cell { 
+            aspect-ratio: 1; display: flex; align-items: center; justify-content: center;
+            border-radius: 50%; font-size: 14px; position: relative; transition: 0.2s; cursor: pointer; 
+        }
+        .cal-cell.has-entry { font-weight: 700; color: var(--theme-color); }
+        .cal-cell.has-entry::after {
+            content: ''; position: absolute; bottom: 4px; width: 4px; height: 4px;
+            background: var(--theme-color); border-radius: 50%;
+        }
+        
+        /* Today highlight matching anime */
+        .cal-cell.is-today { 
+            background: var(--theme-color); color: #fff !important; font-weight: 700;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+        }
+        [data-theme="mitsuha"] .cal-cell.is-today {
+            background: transparent; border: 2.5px solid var(--theme-color); color: var(--theme-color) !important;
+        }
+
+        /* DIARY EDITOR */
+        .option-btn {
+            background: var(--bg-body); border: 1px solid var(--border-color); border-radius: 8px; padding: 8px 12px;
+            font-size: 14px; color: var(--text-sub); cursor: pointer; transition: 0.2s;
+        }
+        .option-btn.selected { background: var(--theme-color); color: #fff; border-color: var(--theme-color); }
 
         /* SETTINGS */
         #view-settings { padding: 30px; }
@@ -196,9 +231,24 @@
             padding-bottom: max(15px, env(safe-area-inset-bottom));
         }
         .bar-icon { color: rgba(255,255,255,0.7); font-size: 22px; cursor: pointer; transition: 0.2s; touch-action: manipulation; }
+        .bar-icon:active { transform: scale(0.9); }
         .bar-icon.active { color: #fff; }
 
-        /* POPUPS */
+        /* MODALS */
+        .modal-overlay {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.5); z-index: 9000; display: none;
+            justify-content: center; align-items: flex-end; backdrop-filter: blur(5px);
+        }
+        .paper-sheet {
+            width: 100%; height: 90%; background: var(--paper-bg); border-top-left-radius: 25px; border-top-right-radius: 25px;
+            display: flex; flex-direction: column; animation: slideUp 0.3s ease-out;
+        }
+        @keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
+        
+        .sheet-header { padding: 20px; border-bottom: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center; background: var(--bg-body); border-top-left-radius: 25px; border-top-right-radius: 25px; }
+        .sheet-body { padding: 30px; flex: 1; overflow-y: auto; line-height: 1.8; color: var(--text-main); font-size: 16px; }
+
         .ios-popup {
             position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%) scale(0.8);
             background: rgba(255,255,255,0.95); backdrop-filter: blur(25px);
@@ -224,6 +274,7 @@
 </head>
 <body>
 
+<!-- TEAR-OFF CALENDAR -->
 <div id="tear-off-overlay">
     <div class="calendar-paper" onclick="tearPage(this)">
         <div style="background:var(--theme-color); color:#fff; padding:20px; font-size:1.5rem; font-weight:700;" id="tear-month">FEBRUARY</div>
@@ -236,6 +287,13 @@
 </div>
 
 <div id="app-container">
+    <!-- LOADING SCREEN -->
+    <div id="loading-screen">
+        <div class="spinner"></div>
+        <p style="margin-top:15px; font-size:14px; color:var(--text-sub);">Intersecting timelines...</p>
+    </div>
+
+    <!-- AUTH OVERLAY -->
     <div id="auth-overlay">
         <div class="auth-card">
             <div class="auth-logo">My Diary</div>
@@ -243,13 +301,15 @@
                 <input type="text" id="auth-user" class="auth-input" placeholder="Username (for Sign Up)">
                 <input type="email" id="auth-email" class="auth-input" placeholder="Email">
                 <input type="password" id="auth-pass" class="auth-input" placeholder="Password">
-                <div style="font-size:11px; color:var(--text-sub); margin-bottom:10px; font-weight:700;">SELECT ROLE</div>
+                
+                <div style="font-size:11px; color:var(--text-sub); margin-bottom:10px; font-weight:700; letter-spacing:1px;">SELECT ROLE</div>
                 <div class="role-selector">
-                    <div class="role-btn active" id="btn-taki" onclick="setRole('Taki')"><i class="fas fa-mars"></i> TAKI</div>
-                    <div class="role-btn" id="btn-mitsuha" onclick="setRole('Mitsuha')"><i class="fas fa-venus"></i> MITSUHA</div>
+                    <div class="role-btn active" id="btn-taki" onclick="setRole('taki')"><i class="fas fa-mars"></i> TAKI</div>
+                    <div class="role-btn" id="btn-mitsuha" onclick="setRole('mitsuha')"><i class="fas fa-venus"></i> MITSUHA</div>
                 </div>
+
                 <div class="auth-btn-group">
-                    <button class="auth-btn" onclick="handleLogin()">LOGIN</button>
+                    <button class="auth-btn" id="login-btn" onclick="handleLogin()">LOGIN</button>
                     <button class="auth-btn secondary" onclick="handleSignUp()">SIGN UP</button>
                 </div>
                 <div class="guest-btn" onclick="guestSignIn()">Continue as Guest</div>
@@ -257,6 +317,7 @@
         </div>
     </div>
 
+    <!-- MAIN APP -->
     <div class="status-bar">
         <span id="status-date">Feb 12</span>
         <span id="status-clock">12:00</span>
@@ -273,19 +334,36 @@
     </header>
 
     <div class="view-section active" id="view-entries"><div id="entry-list" class="entry-list"></div></div>
-    <div class="view-section" id="view-calendar" style="padding:25px;"><div style="text-align:center; font-size:24px; color:var(--theme-color); margin-bottom:25px;" id="cal-month">Month Year</div><div id="calendar-grid" class="cal-grid"></div></div>
+    
+    <div class="view-section" id="view-calendar" style="padding:25px;">
+        <div style="text-align:center; font-size:24px; color:var(--theme-color); margin-bottom:25px; font-weight:300;" id="cal-month">Month Year</div>
+        <div id="calendar-grid" class="cal-grid"></div>
+    </div>
+
     <div class="view-section" id="view-diary" style="padding:25px;">
-        <div style="width:100%; height:180px; border:2px dashed var(--border-color); border-radius:12px; display:flex; align-items:center; justify-content:center; cursor:pointer; margin-bottom:15px; background:var(--input-bg);" onclick="document.getElementById('entry-img-input').click()">
-            <div id="img-placeholder" style="color:var(--text-sub); text-align:center;"><i class="fas fa-camera" style="font-size:2rem; display:block; margin-bottom:10px;"></i>Add Photo</div>
-            <img id="entry-img-preview" src="" style="display:none; width:100%; height:100%; object-fit:cover;">
+        <div style="display:flex; justify-content:space-between; margin-bottom:15px;">
+            <div style="display:flex; gap:8px;">
+                <button class="option-btn selected" onclick="setMood(this, 'sun')"><i class="fas fa-sun"></i></button>
+                <button class="option-btn" onclick="setMood(this, 'cloud')"><i class="fas fa-cloud"></i></button>
+                <button class="option-btn" onclick="setMood(this, 'cloud-rain')"><i class="fas fa-cloud-rain"></i></button>
+            </div>
+            <button class="option-btn" onclick="document.getElementById('entry-img-input').click()"><i class="fas fa-camera"></i> Photo</button>
+        </div>
+        <div id="img-preview-box" style="width:100%; height:180px; border-radius:12px; margin-bottom:15px; display:none; position:relative; overflow:hidden;">
+            <img id="entry-img-preview" style="width:100%; height:100%; object-fit:cover;">
+            <div onclick="clearEntryImg()" style="position:absolute; top:8px; right:8px; background:rgba(0,0,0,0.5); color:#fff; width:24px; height:24px; border-radius:50%; display:flex; align-items:center; justify-content:center; cursor:pointer;">&times;</div>
         </div>
         <input type="file" id="entry-img-input" style="display:none;" accept="image/*" onchange="previewEntryImg(this)">
         <input type="text" id="entry-title" class="auth-input" style="border-radius:8px;" placeholder="Title">
         <textarea id="entry-content" class="auth-input" style="flex:1; border-radius:12px; resize:none;" placeholder="What happened today?"></textarea>
         <button class="auth-btn" style="margin-top:15px; flex:none;" onclick="saveEntry()">SAVE TO TIMELINE</button>
     </div>
+
     <div class="view-section" id="view-settings">
-        <div style="text-align:center; margin-bottom:30px;"><div class="pfp-container" onclick="document.getElementById('pfp-input').click()"><img id="user-pfp" src="https://cdn-icons-png.flaticon.com/512/149/149071.png"></div><h2 id="settings-username">Username</h2><p id="settings-email" style="color:var(--text-sub); font-size:14px;">email@example.com</p></div>
+        <div style="text-align:center; margin-bottom:30px;">
+            <div class="pfp-container" onclick="document.getElementById('pfp-input').click()"><img id="user-pfp" src="https://cdn-icons-png.flaticon.com/512/149/149071.png"></div>
+            <h2 id="settings-username">Username</h2><p id="settings-email" style="color:var(--text-sub); font-size:14px;">email@example.com</p>
+        </div>
         <input type="file" id="pfp-input" style="display:none;" accept="image/*" onchange="updatePfp(this)">
         <div class="settings-item"><span>Dark Mode</span><input type="checkbox" id="dark-mode-toggle" onchange="toggleDarkMode(this.checked)"></div>
         <div class="settings-item" onclick="logout()" style="color:#FF3B30; cursor:pointer;"><span>Log Out</span><i class="fas fa-sign-out-alt"></i></div>
@@ -296,6 +374,13 @@
         <i class="fas fa-calendar-alt bar-icon" id="tab-calendar" onclick="switchTab('calendar')"></i>
         <i class="fas fa-pen bar-icon" id="tab-diary" onclick="switchTab('diary')"></i>
         <i class="fas fa-gear bar-icon" id="tab-settings" onclick="switchTab('settings')"></i>
+    </div>
+</div>
+
+<div class="modal-overlay" id="read-modal">
+    <div class="paper-sheet">
+        <div class="sheet-header"><button style="color:#FF3B30; border:none; background:none;" onclick="deleteCurrentEntry()"><i class="fas fa-trash"></i></button><span id="m-date">Date</span><button style="color:var(--theme-color); font-weight:700; border:none; background:none;" onclick="closeModal()">Done</button></div>
+        <div class="sheet-body"><img id="m-img" style="width:100%; border-radius:12px; margin-bottom:20px; display:none;"><h2 id="m-title" style="margin-bottom:15px; color:var(--theme-color);">Title</h2><div id="m-text" style="white-space:pre-wrap;">Content...</div></div>
     </div>
 </div>
 
@@ -315,89 +400,70 @@
     firebase.initializeApp(firebaseConfig);
     const auth = firebase.auth();
     const db = firebase.firestore();
-
-    // PERSISTENCE FIX: Force Local Storage persistence
     auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL);
 
-    let currentUser = null;
-    let selectedRole = 'Taki';
-    let currentViewRole = 'Taki';
-    let entryImageData = null;
+    let currentUser = null, selectedRole = 'taki', currentViewRole = 'taki', entryImageData = null, currentMood = 'sun', currentEntries = [], openEntryId = null;
 
     function getIST() { return new Date(new Date().getTime() + (5.5 * 60 * 60 * 1000)); }
-
-    function tearPage(el) {
-        el.classList.add('torn-off');
-        setTimeout(() => document.getElementById('tear-off-overlay').style.display='none', 800);
-    }
+    function tearPage(el) { el.classList.add('torn-off'); setTimeout(() => document.getElementById('tear-off-overlay').style.display='none', 800); }
 
     // --- AUTH ---
     function handleLogin() {
-        const email = document.getElementById('auth-email').value;
-        const pass = document.getElementById('auth-pass').value;
-        if(!email || !pass) return alert("Email/Password required");
-        auth.signInWithEmailAndPassword(email, pass).catch(err => alert(err.message));
+        const e = document.getElementById('auth-email').value, p = document.getElementById('auth-pass').value, b = document.getElementById('login-btn');
+        if(!e || !p) return alert("Email/Password required");
+        b.innerText = "LOGGING IN..."; b.disabled = true;
+        auth.signInWithEmailAndPassword(e, p).catch(err => { alert(err.message); b.innerText = "LOGIN"; b.disabled = false; });
     }
 
     function handleSignUp() {
-        const email = document.getElementById('auth-email').value;
-        const pass = document.getElementById('auth-pass').value;
-        const user = document.getElementById('auth-user').value;
-        if(!email || !pass || !user) return alert("Fill all fields");
-        auth.createUserWithEmailAndPassword(email, pass).then(cred => {
-            db.collection('users').doc(cred.user.uid).set({ username: user, email: email, role: selectedRole, uid: cred.user.uid });
-        }).catch(err => alert(err.message));
+        const e = document.getElementById('auth-email').value, p = document.getElementById('auth-pass').value, u = document.getElementById('auth-user').value;
+        if(!e || !p || !u) return alert("Fill all fields");
+        auth.createUserWithEmailAndPassword(e, p).then(cred => db.collection('users').doc(cred.user.uid).set({ username: u, email: e, role: selectedRole, uid: cred.user.uid })).catch(err => alert(err.message));
     }
 
-    function guestSignIn() {
-        if(window.location.protocol === 'file:') return alert("Guest Mode requires a server");
-        auth.signInAnonymously().catch(err => alert(err.message));
-    }
+    function guestSignIn() { if(window.location.protocol === 'file:') return alert("Guest Mode requires a server"); auth.signInAnonymously().catch(err => alert(err.message)); }
 
     auth.onAuthStateChanged(user => {
+        const l = document.getElementById('loading-screen'), a = document.getElementById('auth-overlay');
         if (user) {
             const fetchProfile = (retry = 0) => {
                 db.collection('users').doc(user.uid).get().then(doc => {
                     if (doc.exists) {
                         currentUser = doc.data(); currentUser.uid = user.uid;
-                        document.getElementById('auth-overlay').style.display = 'none';
+                        if(currentUser.role) currentUser.role = currentUser.role.toLowerCase();
+                        l.style.display = 'none'; a.style.display = 'none';
                         checkSwap(); renderCalendar();
                     } else if (user.isAnonymous) {
-                        db.collection('users').doc(user.uid).set({ username: "Guest Voyager", role: selectedRole, uid: user.uid, isGuest: true }).then(() => location.reload());
-                    } else if (retry < 10) {
-                        setTimeout(() => fetchProfile(retry + 1), 1000);
-                    }
+                        db.collection('users').doc(user.uid).set({ username: "Guest Voyager", role: selectedRole, uid: user.uid, isGuest: true }).then(() => fetchProfile());
+                    } else if (retry < 15) setTimeout(() => fetchProfile(retry + 1), 1000);
+                    else { l.style.display = 'none'; a.style.display = 'flex'; }
                 });
             };
             fetchProfile();
-        } else {
-            document.getElementById('auth-overlay').style.display = 'flex';
-        }
+        } else { l.style.display = 'none'; a.style.display = 'flex'; a.style.opacity = '1'; }
     });
 
     // --- LOGIC ---
     function saveEntry() {
-        const title = document.getElementById('entry-title').value, content = document.getElementById('entry-content').value;
-        if (!title || !content) return alert("Title/Content required");
+        const t = document.getElementById('entry-title').value, c = document.getElementById('entry-content').value;
+        if (!t || !c) return alert("Title/Content required");
         showPopup("Saving...", "Connecting timeline...");
         const ist = getIST();
-        db.collection('entries').add({ author_uid: currentUser.uid, role: currentUser.role, title: title, content: content, image: entryImageData || null, timestamp: ist.getTime(), day: ist.getUTCDate(), month: ist.toLocaleString('default', { month: 'short' }) }).then(() => {
+        db.collection('entries').add({ author_uid: currentUser.uid, role: currentUser.role.toLowerCase(), title: t, content: c, image: entryImageData || null, mood: currentMood, timestamp: ist.getTime(), day: ist.getUTCDate(), month: ist.toLocaleString('default', { month: 'short' }) }).then(() => {
             document.getElementById('entry-title').value = ''; document.getElementById('entry-content').value = '';
-            document.getElementById('entry-img-preview').style.display = 'none'; document.getElementById('img-placeholder').style.display = 'block';
-            entryImageData = null; switchTab('entries');
-            showPopup("Saved", "The memory has been woven into Musubi.");
-            setTimeout(closePopup, 2000);
-        });
+            document.getElementById('img-preview-box').style.display = 'none'; entryImageData = null;
+            switchTab('entries'); showPopup("Saved", "The memory has been woven into Musubi."); setTimeout(closePopup, 2000);
+        }).catch(err => { alert(err.message); closePopup(); });
     }
 
     function loadEntries() {
         const list = document.getElementById('entry-list');
         list.innerHTML = '<p style="text-align:center; padding:20px; color:#fff;">Calling memories...</p>';
-        db.collection('entries').where('role', '==', currentViewRole).orderBy('timestamp', 'desc').limit(20).onSnapshot(snap => {
-            list.innerHTML = '';
+        db.collection('entries').where('role', '==', currentViewRole.toLowerCase()).orderBy('timestamp', 'desc').limit(20).onSnapshot(snap => {
+            list.innerHTML = ''; currentEntries = [];
             snap.forEach(doc => {
-                const data = doc.data();
-                list.innerHTML += `<div class="entry-item"><div class="entry-row"><div class="date-col"><span class="date-num">${data.day}</span><span class="date-day">${data.month}</span></div><div class="content-col"><div class="entry-title">${data.title}</div><div class="entry-excerpt">${data.content}</div></div></div>${data.image ? `<img src="${data.image}" class="entry-img-attached" onload="this.classList.add('loaded')">` : ''}</div>`;
+                const data = doc.data(); data.id = doc.id; currentEntries.push(data);
+                list.innerHTML += `<div class="entry-item" onclick="openEntry('${doc.id}')"><div class="entry-row"><div class="date-col"><span class="date-num">${data.day}</span><span class="date-day">${data.month}</span></div><div class="content-col"><div class="entry-title">${data.title}</div><div class="entry-excerpt">${data.content}</div></div></div>${data.image ? `<img src="${data.image}" class="entry-img-attached" onload="this.classList.add('loaded')">` : ''}</div>`;
             });
             if(snap.empty) list.innerHTML = '<p style="text-align:center; padding:40px; color:#fff;">No memories yet.</p>';
         });
@@ -409,7 +475,7 @@
         grid.innerHTML = '';
         ['S','M','T','W','T','F','S'].forEach(d => grid.innerHTML += `<div style="font-weight:700; color:var(--text-sub); font-size:12px;">${d}</div>`);
         for(let i=0; i<new Date(year, month, 1).getDay(); i++) grid.innerHTML += '<div></div>';
-        db.collection('entries').where('role', '==', currentViewRole).get().then(snap => {
+        db.collection('entries').where('role', '==', currentViewRole.toLowerCase()).get().then(snap => {
             const days = snap.docs.map(doc => doc.data().day);
             for(let d=1; d<=new Date(year, month + 1, 0).getDate(); d++) {
                 grid.innerHTML += `<div class="cal-cell ${days.includes(d)?'has-entry':''} ${d===ist.getUTCDate()?'is-today':''}">${d}</div>`;
@@ -422,10 +488,7 @@
         const target = document.getElementById(`view-${name}`); target.style.display = 'flex'; target.classList.add('active');
         document.querySelectorAll('.bar-icon').forEach(i => i.classList.remove('active')); document.getElementById(`tab-${name}`).classList.add('active');
         const segIdx = {'entries':0, 'calendar':1, 'diary':2}[name];
-        if(segIdx !== undefined) {
-            document.querySelectorAll('.segment').forEach(s => s.classList.remove('active'));
-            document.querySelectorAll('.segment')[segIdx].classList.add('active');
-        }
+        if(segIdx !== undefined) { document.querySelectorAll('.segment').forEach(s => s.classList.remove('active')); document.querySelectorAll('.segment')[segIdx].classList.add('active'); }
         if(name === 'entries') loadEntries();
         if(name === 'calendar') renderCalendar();
         if(name === 'settings' && currentUser) {
@@ -436,22 +499,31 @@
     }
 
     function checkSwap() {
-        const ist = getIST(), isEven = (ist.getUTCDate() % 2 === 0);
-        const oldRole = currentViewRole;
-        currentViewRole = isEven ? currentUser.role : (currentUser.role === 'Taki' ? 'Mitsuha' : 'Taki');
-        if(oldRole !== currentViewRole) {
-            const app = document.getElementById('app-container');
-            app.classList.add('swapping'); setTimeout(() => app.classList.remove('swapping'), 1000);
-        }
-        document.documentElement.setAttribute('data-theme', currentViewRole === 'Mitsuha' ? 'mitsuha' : '');
-        document.getElementById('app-title-text').innerText = `${currentViewRole}'s Diary`;
+        if(!currentUser) return;
+        const ist = getIST(), isEven = (ist.getUTCDate() % 2 === 0), old = currentViewRole;
+        currentViewRole = isEven ? currentUser.role : (currentUser.role === 'taki' ? 'mitsuha' : 'taki');
+        if(old !== currentViewRole) { const app = document.getElementById('app-container'); app.classList.add('swapping'); setTimeout(() => app.classList.remove('swapping'), 1000); }
+        document.documentElement.setAttribute('data-theme', currentViewRole === 'mitsuha' ? 'mitsuha' : '');
+        document.getElementById('app-title-text').innerText = `${currentViewRole.charAt(0).toUpperCase() + currentViewRole.slice(1)}'s Diary`;
         loadEntries();
     }
 
-    function setRole(role) { selectedRole = role; document.getElementById('btn-taki').classList.toggle('active', role === 'Taki'); document.getElementById('btn-mitsuha').classList.toggle('active', role === 'Mitsuha'); }
-    function previewEntryImg(input) { if (input.files && input.files[0]) { const r = new FileReader(); r.onload = e => { entryImageData = e.target.result; document.getElementById('entry-img-preview').src = entryImageData; document.getElementById('entry-img-preview').style.display = 'block'; document.getElementById('img-placeholder').style.display = 'none'; }; r.readAsDataURL(input.files[0]); } }
-    function updatePfp(input) { if (input.files && input.files[0]) { const r = new FileReader(); r.onload = e => { const b = e.target.result; document.getElementById('user-pfp').src = b; db.collection('users').doc(currentUser.uid).update({ pfp: b }); }; r.readAsDataURL(input.files[0]); } }
-    function toggleDarkMode(isDark) { document.documentElement.setAttribute('data-dark', isDark); localStorage.setItem('diary-dark-mode', isDark); }
+    function openEntry(id) {
+        const e = currentEntries.find(x => x.id === id); if(!e) return; openEntryId = id;
+        document.getElementById('m-title').innerText = e.title; document.getElementById('m-text').innerText = e.content;
+        document.getElementById('m-date').innerText = `${e.month} ${e.day}`;
+        const img = document.getElementById('m-img'); if(e.image) { img.src = e.image; img.style.display = 'block'; } else img.style.display = 'none';
+        document.getElementById('read-modal').style.display = 'flex';
+    }
+    function closeModal() { document.getElementById('read-modal').style.display = 'none'; }
+    function deleteCurrentEntry() { if(confirm("Delete this memory?") && openEntryId) { db.collection('entries').doc(openEntryId).delete().then(() => { closeModal(); showPopup("Deleted", "The thread has been cut."); }); } }
+
+    function setRole(r) { selectedRole = r; document.getElementById('btn-taki').classList.toggle('active', r === 'taki'); document.getElementById('btn-mitsuha').classList.toggle('active', r === 'mitsuha'); }
+    function setMood(b, m) { currentMood = m; document.querySelectorAll('.option-btn').forEach(btn => btn.classList.remove('selected')); b.classList.add('selected'); }
+    function previewEntryImg(i) { if (i.files && i.files[0]) { const r = new FileReader(); r.onload = e => { entryImageData = e.target.result; document.getElementById('entry-img-preview').src = entryImageData; document.getElementById('entry-img-preview').style.display = 'block'; document.getElementById('img-preview-box').style.display = 'block'; }; r.readAsDataURL(i.files[0]); } }
+    function clearEntryImg() { entryImageData = null; document.getElementById('img-preview-box').style.display = 'none'; document.getElementById('entry-img-input').value = ''; }
+    function updatePfp(i) { if (i.files && i.files[0]) { const r = new FileReader(); r.onload = e => { const b = e.target.result; document.getElementById('user-pfp').src = b; db.collection('users').doc(currentUser.uid).update({ pfp: b }); }; r.readAsDataURL(i.files[0]); } }
+    function toggleDarkMode(d) { document.documentElement.setAttribute('data-dark', d); localStorage.setItem('diary-dark-mode', d); }
     function logout() { auth.signOut().then(() => location.reload()); }
     function showPopup(t, m) { document.getElementById('popup-title').innerText = t; document.getElementById('popup-msg').innerText = m; document.getElementById('ios-popup').classList.add('show'); }
     function closePopup() { document.getElementById('ios-popup').classList.remove('show'); }
