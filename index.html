@@ -603,88 +603,12 @@
     auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL);
 
     let currentUser = null, selectedRole = 'taki', currentViewRole = 'taki', entryImageData = null, entryAudioData = null, currentMood = 'sun', currentEntries = [], openEntryId = null, mediaRecorder, audioChunks = [], isRecording = false, currentLocation = null, currentPin = "", isGalleryMode = false;
-    let calendarViewDate = new Date(); // New State for Calendar
+    let calendarViewDate = new Date();
 
     function getIST() { return new Date(new Date().getTime() + (5.5 * 60 * 60 * 1000)); }
     function tearPage(el) { el.classList.add('torn-off'); setTimeout(() => document.getElementById('tear-off-overlay').style.display='none', 800); }
 
-    // --- SEARCH ---
-    function filterEntries(query) {
-        const list = document.getElementById('entry-list');
-        const q = query.toLowerCase();
-        const filtered = currentEntries.filter(e => 
-            e.title.toLowerCase().includes(q) || 
-            e.content.toLowerCase().includes(q) ||
-            e.month.toLowerCase().includes(q)
-        );
-        
-        list.innerHTML = '';
-        if (filtered.length === 0) {
-            list.innerHTML = '<p style="text-align:center; padding:40px; color:var(--text-sub);">No matches found.</p>';
-            return;
-        }
-        
-        filtered.forEach(data => {
-            list.innerHTML += `<div class="entry-item" onclick="openEntry('${data.id}')"><div class="entry-row"><div class="date-col"><span class="date-num">${data.day}</span><span class="date-day">${data.month}</span></div><div class="content-col"><div class="entry-meta">${data.image ? '<i class="fas fa-image"></i>' : ''} ${data.audio ? '<i class="fas fa-volume-up"></i>' : ''} <i class="fas fa-${data.mood || 'sun'}"></i></div><div class="entry-title">${data.title}</div><div class="entry-excerpt">${data.content}</div></div></div></div>`;
-        });
-    }
-
-    // --- CALENDAR ---
-    function changeMonth(n) {
-        calendarViewDate.setMonth(calendarViewDate.getMonth() + n);
-        renderCalendar();
-    }
-
-    function renderCalendar() {
-        const grid = document.getElementById('calendar-grid');
-        const year = calendarViewDate.getFullYear();
-        const month = calendarViewDate.getMonth();
-        const today = getIST();
-        
-        document.getElementById('cal-month').innerText = calendarViewDate.toLocaleString('default', { month: 'long', year: 'numeric' });
-        
-        grid.innerHTML = ''; 
-        ['S','M','T','W','T','F','S'].forEach(d => grid.innerHTML += `<div style="font-weight:700; color:var(--text-sub); font-size:12px; margin-bottom:5px;">${d}</div>`);
-        
-        const firstDay = new Date(year, month, 1).getDay();
-        const daysInMonth = new Date(year, month + 1, 0).getDate();
-
-        for(let i=0; i<firstDay; i++) grid.innerHTML += '<div></div>';
-        
-        // Render Empty Grid First (Fixes "Not Rendering" Bug)
-        for(let d=1; d<=daysInMonth; d++) {
-            const isToday = (d === today.getDate() && month === today.getMonth() && year === today.getFullYear());
-            grid.innerHTML += `<div class="cal-cell ${isToday ? 'is-today' : ''}" id="day-${d}" style="position:relative; aspect-ratio:1; display:flex; align-items:center; justify-content:center; border-radius:50%; font-size:14px; cursor:pointer;">${d}</div>`;
-        }
-
-        // Then Fetch & Decorate
-        if (currentUser && currentUser.coupleId) {
-            // Get entries for this month ONLY (Optimization)
-            // Note: Firestore string filtering is tricky, getting all for role is safer for small apps
-            db.collection('entries')
-                .where('coupleId', '==', currentUser.coupleId)
-                .where('role', '==', currentViewRole.toLowerCase())
-                .get().then(snap => {
-                    snap.forEach(doc => {
-                        const data = doc.data();
-                        const entryDate = new Date(data.timestamp);
-                        // Check if entry belongs to currently viewed month
-                        if (entryDate.getMonth() === month && entryDate.getFullYear() === year) {
-                            const dayEl = document.getElementById(`day-${data.day}`);
-                            if (dayEl) {
-                                dayEl.classList.add('has-entry');
-                                // Add Mood Dot
-                                const moodColors = { 'sun': '#f39c12', 'cloud': '#95a5a6', 'rain': '#3498db' };
-                                const dot = document.createElement('div');
-                                dot.style.cssText = `position:absolute; bottom:2px; width:5px; height:5px; border-radius:50%; background:${moodColors[data.mood] || '#5D8CAE'};`;
-                                if (!dayEl.querySelector('div')) dayEl.appendChild(dot); // Avoid duplicates
-                                dayEl.onclick = () => openEntry(doc.id);
-                            }
-                        }
-                    });
-                });
-        }
-    }
+    // --- INTRO SEQUENCE ---
     function playIntroSequence() {
         const overlay = document.getElementById('cinematic-overlay');
         const text = document.getElementById('intro-text');
@@ -777,6 +701,84 @@
             btn.style.background = "var(--theme-color)";
             input.value = "";
             input.disabled = false;
+        }
+    }
+
+    // --- SEARCH ---
+    function filterEntries(query) {
+        const list = document.getElementById('entry-list');
+        const q = query.toLowerCase();
+        const filtered = currentEntries.filter(e => 
+            e.title.toLowerCase().includes(q) || 
+            e.content.toLowerCase().includes(q) ||
+            e.month.toLowerCase().includes(q)
+        );
+        
+        list.innerHTML = '';
+        if (filtered.length === 0) {
+            list.innerHTML = '<p style="text-align:center; padding:40px; color:var(--text-sub);">No matches found.</p>';
+            return;
+        }
+        
+        filtered.forEach(data => {
+            list.innerHTML += `<div class="entry-item" onclick="openEntry('${data.id}')"><div class="entry-row"><div class="date-col"><span class="date-num">${data.day}</span><span class="date-day">${data.month}</span></div><div class="content-col"><div class="entry-meta">${data.image ? '<i class="fas fa-image"></i>' : ''} ${data.audio ? '<i class="fas fa-volume-up"></i>' : ''} <i class="fas fa-${data.mood || 'sun'}"></i></div><div class="entry-title">${data.title}</div><div class="entry-excerpt">${data.content}</div></div></div></div>`;
+        });
+    }
+
+    // --- CALENDAR ---
+    function changeMonth(n) {
+        calendarViewDate.setMonth(calendarViewDate.getMonth() + n);
+        renderCalendar();
+    }
+
+    function renderCalendar() {
+        const grid = document.getElementById('calendar-grid');
+        const year = calendarViewDate.getFullYear();
+        const month = calendarViewDate.getMonth();
+        const today = getIST();
+        
+        document.getElementById('cal-month').innerText = calendarViewDate.toLocaleString('default', { month: 'long', year: 'numeric' });
+        
+        grid.innerHTML = ''; 
+        ['S','M','T','W','T','F','S'].forEach(d => grid.innerHTML += `<div style="font-weight:700; color:var(--text-sub); font-size:12px; margin-bottom:5px;">${d}</div>`);
+        
+        const firstDay = new Date(year, month, 1).getDay();
+        const daysInMonth = new Date(year, month + 1, 0).getDate();
+
+        for(let i=0; i<firstDay; i++) grid.innerHTML += '<div></div>';
+        
+        // Render Empty Grid First (Fixes "Not Rendering" Bug)
+        for(let d=1; d<=daysInMonth; d++) {
+            const isToday = (d === today.getDate() && month === today.getMonth() && year === today.getFullYear());
+            grid.innerHTML += `<div class="cal-cell ${isToday ? 'is-today' : ''}" id="day-${d}" style="position:relative; aspect-ratio:1; display:flex; align-items:center; justify-content:center; border-radius:50%; font-size:14px; cursor:pointer;">${d}</div>`;
+        }
+
+        // Then Fetch & Decorate
+        if (currentUser && currentUser.coupleId) {
+            // Get entries for this month ONLY (Optimization)
+            // Note: Firestore string filtering is tricky, getting all for role is safer for small apps
+            db.collection('entries')
+                .where('coupleId', '==', currentUser.coupleId)
+                .where('role', '==', currentViewRole.toLowerCase())
+                .get().then(snap => {
+                    snap.forEach(doc => {
+                        const data = doc.data();
+                        const entryDate = new Date(data.timestamp);
+                        // Check if entry belongs to currently viewed month
+                        if (entryDate.getMonth() === month && entryDate.getFullYear() === year) {
+                            const dayEl = document.getElementById(`day-${data.day}`);
+                            if (dayEl) {
+                                dayEl.classList.add('has-entry');
+                                // Add Mood Dot
+                                const moodColors = { 'sun': '#f39c12', 'cloud': '#95a5a6', 'rain': '#3498db' };
+                                const dot = document.createElement('div');
+                                dot.style.cssText = `position:absolute; bottom:2px; width:5px; height:5px; border-radius:50%; background:${moodColors[data.mood] || '#5D8CAE'};`;
+                                if (!dayEl.querySelector('div')) dayEl.appendChild(dot); // Avoid duplicates
+                                dayEl.onclick = () => openEntry(doc.id);
+                            }
+                        }
+                    });
+                });
         }
     }
 
@@ -982,7 +984,9 @@
         if(!currentUser) return;
         const ist = getIST();
         
-        // LOGIC: Swap based on days passed since "Pairing Day" (Musubi Day)
+        let shouldSwap = false;
+
+        // LOGIC A: New "Connection-Based" Swap (Preferred)
         if (currentUser.coupleId && currentUser.pairTimestamp) {
             const start = new Date(currentUser.pairTimestamp);
             start.setHours(0,0,0,0);
@@ -992,9 +996,17 @@
             const diffTime = Math.abs(now - start);
             const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
             
-            // Even Days: Self (Original Role), Odd Days: Partner (Swapped)
-            const shouldSwap = (diffDays % 2 !== 0);
-            currentViewRole = shouldSwap ? (currentUser.role === 'taki' ? 'mitsuha' : 'taki') : currentUser.role;
+            shouldSwap = (diffDays % 2 !== 0);
+        
+        // LOGIC B: Legacy "Calendar-Based" Swap (Fallback for old users)
+        } else if (currentUser.coupleId) {
+            const isEven = (ist.getUTCDate() % 2 === 0);
+            // Even Days: Self, Odd Days: Swap (Matches original logic)
+            shouldSwap = !isEven; 
+        }
+
+        if (shouldSwap) {
+            currentViewRole = (currentUser.role === 'taki' ? 'mitsuha' : 'taki');
         } else {
             currentViewRole = currentUser.role || 'taki';
         }
@@ -1068,15 +1080,53 @@
     ev.addEventListener('touchend', () => { if (parseInt(document.getElementById('pull-refresh').style.height) >= 60) { loadEntries(); renderCalendar(); } document.getElementById('pull-refresh').style.height = '0px'; });
 
     function renderCalendar() {
-        const grid = document.getElementById('calendar-grid'), ist = getIST(), year = ist.getUTCFullYear(), month = ist.getUTCMonth();
-        document.getElementById('cal-month').innerText = ist.toLocaleString('default', { month: 'long', year: 'numeric' });
-        grid.innerHTML = ''; ['S','M','T','W','T','F','S'].forEach(d => grid.innerHTML += `<div style="font-weight:700; color:var(--text-sub); font-size:12px;">${d}</div>`);
-        for(let i=0; i<new Date(year, month, 1).getDay(); i++) grid.innerHTML += '<div></div>';
+        const grid = document.getElementById('calendar-grid');
+        const year = calendarViewDate.getFullYear();
+        const month = calendarViewDate.getMonth();
+        const today = getIST();
+        
+        document.getElementById('cal-month').innerText = calendarViewDate.toLocaleString('default', { month: 'long', year: 'numeric' });
+        
+        grid.innerHTML = ''; 
+        ['S','M','T','W','T','F','S'].forEach(d => grid.innerHTML += `<div style="font-weight:700; color:var(--text-sub); font-size:12px; margin-bottom:5px;">${d}</div>`);
+        
+        const firstDay = new Date(year, month, 1).getDay();
+        const daysInMonth = new Date(year, month + 1, 0).getDate();
+
+        for(let i=0; i<firstDay; i++) grid.innerHTML += '<div></div>';
+        
+        // Render Empty Grid First (Fixes "Not Rendering" Bug)
+        for(let d=1; d<=daysInMonth; d++) {
+            const isToday = (d === today.getDate() && month === today.getMonth() && year === today.getFullYear());
+            grid.innerHTML += `<div class="cal-cell ${isToday ? 'is-today' : ''}" id="day-${d}" style="position:relative; aspect-ratio:1; display:flex; align-items:center; justify-content:center; border-radius:50%; font-size:14px; cursor:pointer;">${d}</div>`;
+        }
+
+        // Then Fetch & Decorate
         if (currentUser && currentUser.coupleId) {
-            db.collection('entries').where('coupleId', '==', currentUser.coupleId).where('role', '==', currentViewRole.toLowerCase()).get().then(snap => {
-                const days = snap.docs.map(doc => doc.data().day);
-                for(let d=1; d<=new Date(year, month + 1, 0).getDate(); d++) grid.innerHTML += `<div class="cal-cell ${days.includes(d)?'has-entry':''} ${d===ist.getUTCDate()?'is-today':''}">${d}</div>`;
-            });
+            // Get entries for this month ONLY (Optimization)
+            // Note: Firestore string filtering is tricky, getting all for role is safer for small apps
+            db.collection('entries')
+                .where('coupleId', '==', currentUser.coupleId)
+                .where('role', '==', currentViewRole.toLowerCase())
+                .get().then(snap => {
+                    snap.forEach(doc => {
+                        const data = doc.data();
+                        const entryDate = new Date(data.timestamp);
+                        // Check if entry belongs to currently viewed month
+                        if (entryDate.getMonth() === month && entryDate.getFullYear() === year) {
+                            const dayEl = document.getElementById(`day-${data.day}`);
+                            if (dayEl) {
+                                dayEl.classList.add('has-entry');
+                                // Add Mood Dot
+                                const moodColors = { 'sun': '#f39c12', 'cloud': '#95a5a6', 'rain': '#3498db' };
+                                const dot = document.createElement('div');
+                                dot.style.cssText = `position:absolute; bottom:2px; width:5px; height:5px; border-radius:50%; background:${moodColors[data.mood] || '#5D8CAE'};`;
+                                if (!dayEl.querySelector('div')) dayEl.appendChild(dot); // Avoid duplicates
+                                dayEl.onclick = () => openEntry(doc.id);
+                            }
+                        }
+                    });
+                });
         }
     }
 
