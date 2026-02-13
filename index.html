@@ -761,7 +761,14 @@
         const e = document.getElementById('auth-email').value, p = document.getElementById('auth-pass').value, u = document.getElementById('auth-user').value;
         if(!e || !p || !u) return alert("Fill all fields");
         auth.createUserWithEmailAndPassword(e, p).then(cred => {
-            db.collection('users').doc(cred.user.uid).set({ username: u, email: e, role: selectedRole, uid: cred.user.uid, coupleId: null });
+            db.collection('users').doc(cred.user.uid).set({ 
+                username: u, 
+                email: e, 
+                role: selectedRole, 
+                uid: cred.user.uid, 
+                coupleId: null,
+                pairTimestamp: null
+            });
             sessionStorage.setItem('justSignedUp', 'true');
         }).catch(err => alert(err.message));
     }
@@ -799,10 +806,9 @@
                     }
                 } else if (user.isAnonymous) {
                     db.collection('users').doc(user.uid).set({ 
-                        username: "Guest Voyager", role: selectedRole, uid: user.uid, isGuest: true, coupleId: null 
+                        username: "Guest Voyager", role: selectedRole, uid: user.uid, isGuest: true, coupleId: null, pairTimestamp: null
                     });
                 } else {
-                    // Profile might be missing momentarily during signup
                     l.style.display = 'none'; a.style.display = 'flex';
                 }
             }, err => {
@@ -818,22 +824,67 @@
     function generateInviteCode() {
         const c = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; let code = '';
         for (let i = 0; i < 6; i++) code += c.charAt(Math.floor(Math.random() * c.length));
-        db.collection('users').doc(currentUser.uid).update({ coupleId: code }).then(() => { currentUser.coupleId = code; renderConnectionUI(); showPopup("Code Generated", "Share it with your partner."); });
+        const now = Date.now();
+        db.collection('users').doc(currentUser.uid).update({ 
+            coupleId: code,
+            pairTimestamp: now 
+        }).then(() => { 
+            currentUser.coupleId = code; 
+            currentUser.pairTimestamp = now;
+            renderConnectionUI(); 
+            showPopup("Code Generated", "Share it with your partner."); 
+        });
     }
-    function connectPartner() {
+    async function connectPartner() {
         const c = document.getElementById('partner-code-input').value.trim().toUpperCase();
         if (c.length !== 6) return alert("Enter 6-char code.");
-        db.collection('users').doc(currentUser.uid).update({ coupleId: c }).then(() => { currentUser.coupleId = c; renderConnectionUI(); showPopup("Connected!", "Timeline synchronized."); loadEntries(); });
-    }
-    function renderConnectionUI() {
-        const container = document.getElementById('connect-section');
-        if (!currentUser.coupleId) {
-            container.innerHTML = `<p style="font-size:14px; color:var(--text-sub); margin-bottom:15px;">Connect with your partner.</p><button class="auth-btn" style="margin-bottom:15px;" onclick="generateInviteCode()">INVITE PARTNER</button><div style="display:flex; gap:10px;"><input type="text" id="partner-code-input" class="auth-input" placeholder="Code" style="margin-bottom:0;"><button class="auth-btn secondary" style="width:auto; padding:0 20px;" onclick="connectPartner()">JOIN</button></div>`;
-        } else {
-            container.innerHTML = `<p style="font-size:12px; color:var(--text-sub);">Your Connection ID:</p><div class="code-box"><span>${currentUser.coupleId}</span><i class="far fa-copy" onclick="copyCode('${currentUser.coupleId}')" style="cursor:pointer; color:var(--theme-color);"></i></div>`;
+        
+        // Find the generator to sync timelines
+        const generatorSnap = await db.collection('users').where('coupleId', '==', c).limit(1).get();
+        let pairTime = Date.now();
+        if (!generatorSnap.empty) {
+            pairTime = generatorSnap.docs[0].data().pairTimestamp || pairTime;
         }
+
+        db.collection('users').doc(currentUser.uid).update({ 
+            coupleId: c,
+            pairTimestamp: pairTime
+        }).then(() => { 
+            currentUser.coupleId = c; 
+            currentUser.pairTimestamp = pairTime;
+            renderConnectionUI(); 
+            showPopup("Connected!", "Timeline synchronized."); 
+            loadEntries(); 
+        });
     }
-    function copyCode(c) { navigator.clipboard.writeText(c).then(() => showPopup("Copied", "Code copied.")); }
+
+    function checkSwap() {
+        if(!currentUser) return;
+        const ist = getIST();
+        
+        // LOGIC: Swap based on days passed since "Pairing Day" (Musubi Day)
+        if (currentUser.coupleId && currentUser.pairTimestamp) {
+            const start = new Date(currentUser.pairTimestamp);
+            start.setHours(0,0,0,0);
+            const now = new Date(ist);
+            now.setHours(0,0,0,0);
+            
+            const diffTime = Math.abs(now - start);
+            const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+            
+            // Even Days: Self (Original Role), Odd Days: Partner (Swapped)
+            const shouldSwap = (diffDays % 2 !== 0);
+            currentViewRole = shouldSwap ? (currentUser.role === 'taki' ? 'mitsuha' : 'taki') : currentUser.role;
+        } else {
+            currentViewRole = currentUser.role || 'taki';
+        }
+
+        document.documentElement.setAttribute('data-theme', currentViewRole === 'mitsuha' ? 'mitsuha' : '');
+        document.getElementById('app-title-text').innerText = `${currentViewRole.charAt(0).toUpperCase() + currentViewRole.slice(1)}'s Diary`;
+        const tm = document.getElementById('tear-month'); 
+        if (tm) tm.style.background = (currentViewRole === 'mitsuha') ? '#FF6B6B' : '#5D8CAE';
+        loadEntries();
+    }
 
     // --- LOGIC ---
     function saveEntry() {
@@ -844,10 +895,14 @@
         
         showPopup("Saving...", "Connecting timeline...");
         const ist = getIST();
+        
+        // FIX: Save to the role currently being VIEWED (the swapped body)
+        const targetRole = currentViewRole.toLowerCase();
+
         db.collection('entries').add({ 
             author_uid: currentUser.uid, 
             coupleId: currentUser.coupleId, 
-            role: currentUser.role.toLowerCase(), 
+            role: targetRole, 
             title: t || (isQuickGallery ? "Photo Memory" : "Untitled"), 
             content: c || "", 
             image: entryImageData || null, 
@@ -930,24 +985,6 @@
             updateLockUI();
             renderConnectionUI(); 
         }
-    }
-
-    function checkSwap() {
-        if(!currentUser) return;
-        const ist = getIST(), isEven = (ist.getUTCDate() % 2 === 0);
-        
-        // ONLY SWAP IF PAIRED
-        if (currentUser.coupleId) {
-            currentViewRole = isEven ? currentUser.role : (currentUser.role === 'taki' ? 'mitsuha' : 'taki');
-        } else {
-            currentViewRole = currentUser.role || 'taki';
-        }
-
-        document.documentElement.setAttribute('data-theme', currentViewRole === 'mitsuha' ? 'mitsuha' : '');
-        document.getElementById('app-title-text').innerText = `${currentViewRole.charAt(0).toUpperCase() + currentViewRole.slice(1)}'s Diary`;
-        const tm = document.getElementById('tear-month'); 
-        if (tm) tm.style.background = (currentViewRole === 'mitsuha') ? '#FF6B6B' : '#5D8CAE';
-        loadEntries();
     }
 
     function openEntry(id) {
