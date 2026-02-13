@@ -458,13 +458,32 @@
     </header>
 
     <div class="view-section active" id="view-entries">
+        <div style="padding: 15px 15px 0 15px;">
+            <div class="search-bar" style="display:flex; align-items:center; background:rgba(0,0,0,0.05); padding:10px 15px; border-radius:12px; margin-bottom:10px;">
+                <i class="fas fa-search" style="color:var(--text-sub); margin-right:10px;"></i>
+                <input type="text" id="entry-search" placeholder="Search memories..." style="background:transparent; border:none; outline:none; font-size:16px; width:100%; color:var(--text-main);" onkeyup="filterEntries(this.value)">
+            </div>
+        </div>
         <div id="pull-refresh"><div class="spinner" style="width:20px; height:20px;"></div></div>
         <div id="entry-list" class="entry-list"></div>
     </div>
     
-    <div class="view-section" id="view-calendar" style="padding:25px;">
-        <div style="text-align:center; font-size:24px; color:var(--theme-color); margin-bottom:25px; font-weight:300;" id="cal-month">Month Year</div>
-        <div id="calendar-grid" class="cal-grid"></div>
+    <div class="view-section" id="view-calendar" style="padding:20px;">
+        <div class="calendar-card" style="background:rgba(255,255,255,0.8); backdrop-filter:blur(20px); border-radius:24px; padding:20px; box-shadow:0 10px 30px rgba(0,0,0,0.05); border:1px solid rgba(255,255,255,0.5);">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
+                <button class="nav-btn" onclick="changeMonth(-1)" style="border:none; background:none; font-size:18px; color:var(--theme-color); padding:10px;"><i class="fas fa-chevron-left"></i></button>
+                <div style="font-size:20px; font-weight:700; color:var(--text-main);" id="cal-month">Month Year</div>
+                <button class="nav-btn" onclick="changeMonth(1)" style="border:none; background:none; font-size:18px; color:var(--theme-color); padding:10px;"><i class="fas fa-chevron-right"></i></button>
+            </div>
+            <div id="calendar-grid" class="cal-grid" style="row-gap: 15px;"></div>
+        </div>
+        <div style="margin-top:20px; text-align:center;">
+            <div style="display:flex; justify-content:center; gap:15px; font-size:12px; color:var(--text-sub);">
+                <span style="display:flex; align-items:center; gap:5px;"><i class="fas fa-sun" style="color:#f39c12;"></i> Good</span>
+                <span style="display:flex; align-items:center; gap:5px;"><i class="fas fa-cloud" style="color:#95a5a6;"></i> Okay</span>
+                <span style="display:flex; align-items:center; gap:5px;"><i class="fas fa-cloud-rain" style="color:#3498db;"></i> Bad</span>
+            </div>
+        </div>
     </div>
 
     <div class="view-section" id="view-gallery">
@@ -584,11 +603,88 @@
     auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL);
 
     let currentUser = null, selectedRole = 'taki', currentViewRole = 'taki', entryImageData = null, entryAudioData = null, currentMood = 'sun', currentEntries = [], openEntryId = null, mediaRecorder, audioChunks = [], isRecording = false, currentLocation = null, currentPin = "", isGalleryMode = false;
+    let calendarViewDate = new Date(); // New State for Calendar
 
     function getIST() { return new Date(new Date().getTime() + (5.5 * 60 * 60 * 1000)); }
     function tearPage(el) { el.classList.add('torn-off'); setTimeout(() => document.getElementById('tear-off-overlay').style.display='none', 800); }
 
-    // --- INTRO SEQUENCE ---
+    // --- SEARCH ---
+    function filterEntries(query) {
+        const list = document.getElementById('entry-list');
+        const q = query.toLowerCase();
+        const filtered = currentEntries.filter(e => 
+            e.title.toLowerCase().includes(q) || 
+            e.content.toLowerCase().includes(q) ||
+            e.month.toLowerCase().includes(q)
+        );
+        
+        list.innerHTML = '';
+        if (filtered.length === 0) {
+            list.innerHTML = '<p style="text-align:center; padding:40px; color:var(--text-sub);">No matches found.</p>';
+            return;
+        }
+        
+        filtered.forEach(data => {
+            list.innerHTML += `<div class="entry-item" onclick="openEntry('${data.id}')"><div class="entry-row"><div class="date-col"><span class="date-num">${data.day}</span><span class="date-day">${data.month}</span></div><div class="content-col"><div class="entry-meta">${data.image ? '<i class="fas fa-image"></i>' : ''} ${data.audio ? '<i class="fas fa-volume-up"></i>' : ''} <i class="fas fa-${data.mood || 'sun'}"></i></div><div class="entry-title">${data.title}</div><div class="entry-excerpt">${data.content}</div></div></div></div>`;
+        });
+    }
+
+    // --- CALENDAR ---
+    function changeMonth(n) {
+        calendarViewDate.setMonth(calendarViewDate.getMonth() + n);
+        renderCalendar();
+    }
+
+    function renderCalendar() {
+        const grid = document.getElementById('calendar-grid');
+        const year = calendarViewDate.getFullYear();
+        const month = calendarViewDate.getMonth();
+        const today = getIST();
+        
+        document.getElementById('cal-month').innerText = calendarViewDate.toLocaleString('default', { month: 'long', year: 'numeric' });
+        
+        grid.innerHTML = ''; 
+        ['S','M','T','W','T','F','S'].forEach(d => grid.innerHTML += `<div style="font-weight:700; color:var(--text-sub); font-size:12px; margin-bottom:5px;">${d}</div>`);
+        
+        const firstDay = new Date(year, month, 1).getDay();
+        const daysInMonth = new Date(year, month + 1, 0).getDate();
+
+        for(let i=0; i<firstDay; i++) grid.innerHTML += '<div></div>';
+        
+        // Render Empty Grid First (Fixes "Not Rendering" Bug)
+        for(let d=1; d<=daysInMonth; d++) {
+            const isToday = (d === today.getDate() && month === today.getMonth() && year === today.getFullYear());
+            grid.innerHTML += `<div class="cal-cell ${isToday ? 'is-today' : ''}" id="day-${d}" style="position:relative; aspect-ratio:1; display:flex; align-items:center; justify-content:center; border-radius:50%; font-size:14px; cursor:pointer;">${d}</div>`;
+        }
+
+        // Then Fetch & Decorate
+        if (currentUser && currentUser.coupleId) {
+            // Get entries for this month ONLY (Optimization)
+            // Note: Firestore string filtering is tricky, getting all for role is safer for small apps
+            db.collection('entries')
+                .where('coupleId', '==', currentUser.coupleId)
+                .where('role', '==', currentViewRole.toLowerCase())
+                .get().then(snap => {
+                    snap.forEach(doc => {
+                        const data = doc.data();
+                        const entryDate = new Date(data.timestamp);
+                        // Check if entry belongs to currently viewed month
+                        if (entryDate.getMonth() === month && entryDate.getFullYear() === year) {
+                            const dayEl = document.getElementById(`day-${data.day}`);
+                            if (dayEl) {
+                                dayEl.classList.add('has-entry');
+                                // Add Mood Dot
+                                const moodColors = { 'sun': '#f39c12', 'cloud': '#95a5a6', 'rain': '#3498db' };
+                                const dot = document.createElement('div');
+                                dot.style.cssText = `position:absolute; bottom:2px; width:5px; height:5px; border-radius:50%; background:${moodColors[data.mood] || '#5D8CAE'};`;
+                                if (!dayEl.querySelector('div')) dayEl.appendChild(dot); // Avoid duplicates
+                                dayEl.onclick = () => openEntry(doc.id);
+                            }
+                        }
+                    });
+                });
+        }
+    }
     function playIntroSequence() {
         const overlay = document.getElementById('cinematic-overlay');
         const text = document.getElementById('intro-text');
