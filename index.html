@@ -770,36 +770,48 @@
     auth.onAuthStateChanged(user => {
         const l = document.getElementById('loading-screen'), a = document.getElementById('auth-overlay');
         if (user) {
-            const fetchProfile = (retry = 0) => {
-                db.collection('users').doc(user.uid).get().then(doc => {
-                    if (doc.exists) {
-                        currentUser = doc.data(); currentUser.uid = user.uid;
-                        if(currentUser.role) currentUser.role = currentUser.role.toLowerCase();
-                        l.style.display = 'none'; a.style.display = 'none';
-                        
-                        // INTRO SEQUENCE CHECK FOR NEW SIGNUPS
-                        if (sessionStorage.getItem('justSignedUp') === 'true') {
-                            playIntroSequence();
-                            sessionStorage.removeItem('justSignedUp');
-                        }
+            // REAL-TIME PROFILE SYNC
+            db.collection('users').doc(user.uid).onSnapshot(doc => {
+                if (doc.exists) {
+                    currentUser = doc.data(); 
+                    currentUser.uid = user.uid;
+                    if(currentUser.role) currentUser.role = currentUser.role.toLowerCase();
+                    
+                    l.style.display = 'none'; 
+                    a.style.display = 'none';
+                    
+                    // Check for Lock Screen on Load (only if not already hidden)
+                    const lock = localStorage.getItem('app-pin');
+                    if (lock && document.getElementById('lock-screen').style.display !== 'none' && !currentPin) {
+                        document.getElementById('lock-screen').style.display = 'flex';
+                        updatePinDots();
+                    }
 
-                        // Check for Lock Screen on Load
-                        const lock = localStorage.getItem('app-pin');
-                        if (lock) {
-                            document.getElementById('lock-screen').style.display = 'flex';
-                            currentPin = "";
-                            updatePinDots();
-                        }
-                        
-                        checkSwap(); renderCalendar();
-                    } else if (user.isAnonymous) {
-                        db.collection('users').doc(user.uid).set({ username: "Guest Voyager", role: selectedRole, uid: user.uid, isGuest: true, coupleId: null }).then(() => fetchProfile());
-                    } else if (retry < 15) setTimeout(() => fetchProfile(retry + 1), 1000);
-                    else { l.style.display = 'none'; a.style.display = 'flex'; }
-                });
-            };
-            fetchProfile();
-        } else { l.style.display = 'none'; a.style.display = 'flex'; a.style.opacity = '1'; }
+                    // Update UI state based on potentially new data (like coupleId)
+                    checkSwap(); 
+                    renderCalendar();
+                    renderConnectionUI(); 
+                    
+                    // Trigger Intro Sequence ONLY for new signups
+                    if (sessionStorage.getItem('justSignedUp') === 'true') {
+                        playIntroSequence();
+                        sessionStorage.removeItem('justSignedUp');
+                    }
+                } else if (user.isAnonymous) {
+                    db.collection('users').doc(user.uid).set({ 
+                        username: "Guest Voyager", role: selectedRole, uid: user.uid, isGuest: true, coupleId: null 
+                    });
+                } else {
+                    // Profile might be missing momentarily during signup
+                    l.style.display = 'none'; a.style.display = 'flex';
+                }
+            }, err => {
+                console.error("Profile Sync Error:", err);
+                l.style.display = 'none'; a.style.display = 'flex';
+            });
+        } else { 
+            l.style.display = 'none'; a.style.display = 'flex'; a.style.opacity = '1'; 
+        }
     });
 
     // --- PAIRING ---
