@@ -858,6 +858,30 @@
         });
     }
 
+    function renderConnectionUI() {
+        const container = document.getElementById('connect-section');
+        if (!container) return;
+        
+        if (!currentUser.coupleId) {
+            container.innerHTML = `
+                <p style="font-size:14px; color:var(--text-sub); margin-bottom:15px;">Connect with your partner.</p>
+                <button class="auth-btn" style="margin-bottom:15px;" onclick="generateInviteCode()">INVITE PARTNER</button>
+                <div style="display:flex; gap:10px;">
+                    <input type="text" id="partner-code-input" class="auth-input" placeholder="Code" style="margin-bottom:0; text-transform:uppercase;">
+                    <button class="auth-btn secondary" style="width:auto; padding:0 20px;" onclick="connectPartner()">JOIN</button>
+                </div>`;
+        } else {
+            container.innerHTML = `
+                <p style="font-size:12px; color:var(--text-sub);">Your Connection ID:</p>
+                <div class="code-box">
+                    <span>${currentUser.coupleId}</span>
+                    <i class="far fa-copy" onclick="copyCode('${currentUser.coupleId}')" style="cursor:pointer; color:var(--theme-color);"></i>
+                </div>
+                <p style="font-size:10px; color:var(--text-sub); margin-top:10px; text-align:center;">Timeline Synced</p>`;
+        }
+    }
+    function copyCode(c) { navigator.clipboard.writeText(c).then(() => showPopup("Copied", "Code copied.")); }
+
     function checkSwap() {
         if(!currentUser) return;
         const ist = getIST();
