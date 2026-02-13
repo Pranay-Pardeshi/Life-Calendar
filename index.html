@@ -822,10 +822,18 @@
     function checkSwap() {
         if(!currentUser) return;
         const ist = getIST(), isEven = (ist.getUTCDate() % 2 === 0);
-        currentViewRole = isEven ? currentUser.role : (currentUser.role === 'taki' ? 'mitsuha' : 'taki');
+        
+        // ONLY SWAP IF PAIRED
+        if (currentUser.coupleId) {
+            currentViewRole = isEven ? currentUser.role : (currentUser.role === 'taki' ? 'mitsuha' : 'taki');
+        } else {
+            currentViewRole = currentUser.role || 'taki';
+        }
+
         document.documentElement.setAttribute('data-theme', currentViewRole === 'mitsuha' ? 'mitsuha' : '');
         document.getElementById('app-title-text').innerText = `${currentViewRole.charAt(0).toUpperCase() + currentViewRole.slice(1)}'s Diary`;
-        const tm = document.getElementById('tear-month'); tm.style.background = (currentViewRole === 'mitsuha') ? '#FF6B6B' : '#5D8CAE';
+        const tm = document.getElementById('tear-month'); 
+        if (tm) tm.style.background = (currentViewRole === 'mitsuha') ? '#FF6B6B' : '#5D8CAE';
         loadEntries();
     }
 
