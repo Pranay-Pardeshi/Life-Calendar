@@ -102,6 +102,15 @@
             background: rgba(0,0,0,0.5); backdrop-filter: blur(5px);
         }
         #skip-intro:hover { opacity: 1; background: rgba(255,255,255,0.1); }
+        
+        #orientation-hint {
+            position: fixed; top: 20px; left: 50%; transform: translateX(-50%);
+            background: rgba(255,255,255,0.15); backdrop-filter: blur(10px);
+            padding: 10px 20px; border-radius: 30px; color: #fff; font-size: 12px;
+            z-index: 21000; display: none; align-items: center; gap: 10px;
+            border: 1px solid rgba(255,255,255,0.2); animation: fadeIn 1s;
+        }
+        @keyframes fadeIn { from { opacity: 0; transform: translate(-50%, -20px); } to { opacity: 1; transform: translate(-50%, 0); } }
 
         /* --- LOCK SCREEN --- */
         #lock-screen {
@@ -358,6 +367,7 @@
 
 <!-- INTRO SEQUENCE -->
 <div id="cinematic-overlay">
+    <div id="orientation-hint">Rotate phone for best experience <i class="fas fa-mobile-alt" style="transform: rotate(90deg);"></i></div>
     <div id="intro-text">
         <div>My Feelings: The 'Your Name' Exchange Diary.</div>
         <br>
@@ -584,11 +594,15 @@
         const text = document.getElementById('intro-text');
         const vidContainer = document.getElementById('intro-video-container');
         const iframe = document.getElementById('intro-iframe');
+        const hint = document.getElementById('orientation-hint');
 
         overlay.style.display = 'flex';
         
-        // 1s: Fade in Text
-        setTimeout(() => { text.style.opacity = '1'; }, 1000);
+        // 1s: Fade in Text and Hint
+        setTimeout(() => { 
+            text.style.opacity = '1'; 
+            hint.style.display = 'flex';
+        }, 1000);
 
         // 7s: Fade out Text
         setTimeout(() => { text.style.opacity = '0'; }, 7000);
@@ -599,6 +613,9 @@
             vidContainer.style.opacity = '1';
             iframe.src = "https://www.youtube.com/embed/-pHfPJGatgE?autoplay=1&controls=0&modestbranding=1&rel=0&showinfo=0&loop=1&mute=0";
         }, 9000);
+
+        // 12s: Hide hint to not distract from video
+        setTimeout(() => { hint.style.display = 'none'; }, 12000);
     }
 
     function endIntroSequence() {
@@ -607,7 +624,6 @@
         setTimeout(() => {
             overlay.style.display = 'none';
             document.getElementById('intro-iframe').src = ""; // Stop video
-            sessionStorage.setItem('introPlayed', 'true');
         }, 2000); // Match CSS transition
     }
 
@@ -744,7 +760,10 @@
     function handleSignUp() {
         const e = document.getElementById('auth-email').value, p = document.getElementById('auth-pass').value, u = document.getElementById('auth-user').value;
         if(!e || !p || !u) return alert("Fill all fields");
-        auth.createUserWithEmailAndPassword(e, p).then(cred => db.collection('users').doc(cred.user.uid).set({ username: u, email: e, role: selectedRole, uid: cred.user.uid, coupleId: null })).catch(err => alert(err.message));
+        auth.createUserWithEmailAndPassword(e, p).then(cred => {
+            db.collection('users').doc(cred.user.uid).set({ username: u, email: e, role: selectedRole, uid: cred.user.uid, coupleId: null });
+            sessionStorage.setItem('justSignedUp', 'true');
+        }).catch(err => alert(err.message));
     }
     function guestSignIn() { if(window.location.protocol === 'file:') return alert("Guest Mode requires a server"); auth.signInAnonymously().catch(err => alert(err.message)); }
 
@@ -758,9 +777,10 @@
                         if(currentUser.role) currentUser.role = currentUser.role.toLowerCase();
                         l.style.display = 'none'; a.style.display = 'none';
                         
-                        // INTRO SEQUENCE CHECK
-                        if (!sessionStorage.getItem('introPlayed')) {
+                        // INTRO SEQUENCE CHECK FOR NEW SIGNUPS
+                        if (sessionStorage.getItem('justSignedUp') === 'true') {
                             playIntroSequence();
+                            sessionStorage.removeItem('justSignedUp');
                         }
 
                         // Check for Lock Screen on Load
