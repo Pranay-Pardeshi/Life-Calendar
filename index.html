@@ -75,6 +75,34 @@
             #app-container { height: 92vh; border-radius: 40px; border: 10px solid #333; }
         }
 
+        /* --- INTRO SEQUENCE --- */
+        #cinematic-overlay {
+            position: fixed; inset: 0; background: #000; z-index: 20000;
+            display: none; flex-direction: column; align-items: center; justify-content: center;
+            transition: opacity 2s ease-in-out;
+        }
+        #intro-text {
+            font-family: 'Roboto', sans-serif; font-weight: 300; letter-spacing: 2px;
+            line-height: 1.8; color: #fff; text-align: center; max-width: 600px;
+            padding: 20px; opacity: 0; transition: opacity 2s ease-in-out;
+        }
+        #intro-video-container {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            opacity: 0; transition: opacity 2s ease-in-out; pointer-events: none;
+        }
+        #intro-iframe {
+            width: 100%; height: 100%; object-fit: cover; pointer-events: auto;
+        }
+        #skip-intro {
+            position: absolute; bottom: 30px; right: 30px;
+            color: #fff; font-size: 14px; letter-spacing: 1px; cursor: pointer;
+            opacity: 0.7; transition: 0.3s; pointer-events: auto;
+            border: 1px solid rgba(255,255,255,0.3); padding: 10px 20px; border-radius: 20px;
+            background: rgba(0,0,0,0.5); backdrop-filter: blur(5px);
+        }
+        #skip-intro:hover { opacity: 1; background: rgba(255,255,255,0.1); }
+
         /* --- LOCK SCREEN --- */
         #lock-screen {
             position: fixed; top: 0; left: 0; width: 100%; height: 100%;
@@ -328,6 +356,21 @@
 </head>
 <body>
 
+<!-- INTRO SEQUENCE -->
+<div id="cinematic-overlay">
+    <div id="intro-text">
+        <div>My Feelings: The 'Your Name' Exchange Diary.</div>
+        <br>
+        <div>Musubi is the flow of time. The twisting, tangling, sometimes unraveling, and connecting again.</div>
+        <br>
+        <div style="font-size: 0.9em; opacity: 0.8;">Welcome to your shared timeline.</div>
+    </div>
+    <div id="intro-video-container">
+        <iframe id="intro-iframe" src="" frameborder="0" allow="autoplay; encrypted-media" allowfullscreen></iframe>
+        <div id="skip-intro" onclick="endIntroSequence()">Skip to Diary <i class="fas fa-chevron-right"></i></div>
+    </div>
+</div>
+
 <!-- TEAR-OFF CALENDAR -->
 <div id="tear-off-overlay">
     <div class="calendar-paper" onclick="tearPage(this)">
@@ -535,6 +578,39 @@
     function getIST() { return new Date(new Date().getTime() + (5.5 * 60 * 60 * 1000)); }
     function tearPage(el) { el.classList.add('torn-off'); setTimeout(() => document.getElementById('tear-off-overlay').style.display='none', 800); }
 
+    // --- INTRO SEQUENCE ---
+    function playIntroSequence() {
+        const overlay = document.getElementById('cinematic-overlay');
+        const text = document.getElementById('intro-text');
+        const vidContainer = document.getElementById('intro-video-container');
+        const iframe = document.getElementById('intro-iframe');
+
+        overlay.style.display = 'flex';
+        
+        // 1s: Fade in Text
+        setTimeout(() => { text.style.opacity = '1'; }, 1000);
+
+        // 7s: Fade out Text
+        setTimeout(() => { text.style.opacity = '0'; }, 7000);
+
+        // 9s: Fade in Video
+        setTimeout(() => {
+            text.style.display = 'none'; // Clear text to ensure video is clickable
+            vidContainer.style.opacity = '1';
+            iframe.src = "https://www.youtube.com/embed/-pHfPJGatgE?autoplay=1&controls=0&modestbranding=1&rel=0&showinfo=0&loop=1&mute=0";
+        }, 9000);
+    }
+
+    function endIntroSequence() {
+        const overlay = document.getElementById('cinematic-overlay');
+        overlay.style.opacity = '0';
+        setTimeout(() => {
+            overlay.style.display = 'none';
+            document.getElementById('intro-iframe').src = ""; // Stop video
+            sessionStorage.setItem('introPlayed', 'true');
+        }, 2000); // Match CSS transition
+    }
+
     // --- LOCK SYSTEM ---
     function pressKey(key) {
         const savedLock = localStorage.getItem('app-pin');
@@ -682,6 +758,11 @@
                         if(currentUser.role) currentUser.role = currentUser.role.toLowerCase();
                         l.style.display = 'none'; a.style.display = 'none';
                         
+                        // INTRO SEQUENCE CHECK
+                        if (!sessionStorage.getItem('introPlayed')) {
+                            playIntroSequence();
+                        }
+
                         // Check for Lock Screen on Load
                         const lock = localStorage.getItem('app-pin');
                         if (lock) {
